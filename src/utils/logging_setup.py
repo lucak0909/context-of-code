@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 
-from .settings import COLOR_RESET, LEVEL_COLORS, get_log_settings
+from ..settings import COLOR_RESET, LEVEL_COLORS, get_log_settings
 
 
 class ColorFormatter(logging.Formatter):
@@ -106,7 +106,7 @@ def setup_logger(
         console_handler.setFormatter(console_formatter)
         root_logger.addHandler(console_handler)
 
-        base_path = Path(base_dir) if base_dir else Path(__file__).resolve().parent
+        base_path = Path(base_dir) if base_dir else Path(__file__).resolve().parents[1]
         logs_path = base_path / logs_dir
         logs_path.mkdir(parents=True, exist_ok=True)
 

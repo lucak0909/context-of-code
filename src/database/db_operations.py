@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 from .db_dataclasses import Device, Room, Sample
 from ..settings import get_settings
-from ..logging_setup import setup_logger
+from ..utils.logging_setup import setup_logger
 
 logger = setup_logger(name=__name__)
 
