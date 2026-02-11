@@ -1,6 +1,6 @@
 from sqlalchemy import text
 from .db_operations import Database
-from ..logging_setup import setup_logger
+from ..utils.logging_setup import setup_logger
 
 logger = setup_logger(name=__name__)
 

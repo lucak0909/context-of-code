@@ -1,6 +1,6 @@
 from flask import Flask
-from blueprints.general import general_bp
-from blueprints.monitoring import monitoring_bp
+from src.blueprints.general import general_bp
+from src.blueprints.monitoring import monitoring_bp
 
 app = Flask(__name__)
 
