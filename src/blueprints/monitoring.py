@@ -5,13 +5,20 @@ from src.monitor_model import DataCollector, MonitorReport
 
 monitoring_bp = Blueprint('monitoring', __name__)
 
+def build_report_dict():
+    collector = DataCollector()
+    device_info = collector.get_device_info()
+    metrics = collector.get_system_metrics()
+    report = MonitorReport(device_info=device_info, metrics=metrics)
+    return dataclasses.asdict(report)
+
+@monitoring_bp.route('/')
+def monitoring_root():
+    return jsonify(build_report_dict())
+
 class MetricsAPI(MethodView):
     def get(self):
-        collector = DataCollector()
-        device_info = collector.get_device_info()
-        metrics = collector.get_system_metrics()
-        report = MonitorReport(device_info=device_info, metrics=metrics)
-        return jsonify(dataclasses.asdict(report))
+        return jsonify(build_report_dict())
 
 monitoring_bp.add_url_rule('/metrics', view_func=MetricsAPI.as_view('metrics_api'))
 """
