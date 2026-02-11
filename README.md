@@ -40,6 +40,18 @@ Run modules from the project root so package imports resolve correctly:
 python -m src.database.test_connection
 ```
 
+Run the Flask app (from the project root).
+
+Option 1 (simple):
+```bash
+python -m src.app
+```
+
+Option 2 (Flask CLI):
+```bash
+flask --app src.app --debug run
+```
+
 ## Logging
 
 The project uses a custom logging setup via `src/logging_setup.py`.
