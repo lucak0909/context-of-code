@@ -9,7 +9,7 @@ import time
 import subprocess
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
-from utils.timer import BlockTimer
+from src.utils.timer import BlockTimer
 
 @dataclass
 class DeviceInfo:
