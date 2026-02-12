@@ -9,7 +9,7 @@ import time
 import subprocess
 import socket
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from src.utils.timer import BlockTimer
 
 @dataclass
@@ -21,6 +21,7 @@ class DeviceInfo:
     username: str
     cpu_name: str
     architecture: str
+    ip_address: str
 
 @dataclass
 class SystemMetrics:
@@ -38,6 +39,7 @@ class NetworkMetrics:
     download_speed_mbps: float  # Megabits per second
     upload_speed_mbps: float    # Megabits per second
     packet_loss_percent: float  # Percentage of packets lost
+    ping: float                 # Average ping latency in ms
 
 class DataCollector:
     """
@@ -56,7 +58,8 @@ class DataCollector:
         return DeviceInfo(
             username=getpass.getuser(),
             cpu_name=self._get_cpu_name(),
-            architecture=platform.machine()
+            architecture=platform.machine(),
+            ip_address=self._get_ip_address()
         )
 
     def get_system_metrics(self) -> SystemMetrics:
@@ -94,6 +97,37 @@ class DataCollector:
             return platform.processor() or "Unknown CPU"
         except Exception:
             return "Unknown CPU"
+
+    def _get_ip_address(self) -> str:
+        """
+        Attempts to fetch the public IP address.
+        Falls back to local IP if public lookup fails.
+        """
+        # Public IP lookup
+        try:
+            import urllib.request
+
+            services = [
+                "https://api.ipify.org?format=text",
+                "https://ifconfig.me/ip",
+                "https://checkip.amazonaws.com",
+            ]
+            for url in services:
+                try:
+                    with urllib.request.urlopen(url, timeout=5) as response:
+                        ip = response.read().decode().strip()
+                        if ip:
+                            return ip
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # Local IP fallback
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return "Unknown"
 
 class NetworkMetricsCollector:
     """
@@ -151,12 +185,13 @@ class NetworkMetricsCollector:
             speedtest_client = self._get_speedtest_client()
             download_speed = self._measure_download_speed(speedtest_client)
             upload_speed = self._measure_upload_speed(speedtest_client)
-            packet_loss = self._measure_packet_loss()
+            packet_loss, ping_ms = self._measure_packet_loss()
         
         new_metrics = NetworkMetrics(
             download_speed_mbps=download_speed,
             upload_speed_mbps=upload_speed,
-            packet_loss_percent=packet_loss
+            packet_loss_percent=packet_loss,
+            ping=ping_ms
         )
         
         # Update cache
@@ -336,7 +371,7 @@ class NetworkMetricsCollector:
                 pass
         return 10
 
-    def _measure_packet_loss(self, hosts: Optional[list] = None, packets: Optional[int] = None) -> float:
+    def _measure_packet_loss(self, hosts: Optional[list] = None, packets: Optional[int] = None) -> Tuple[float, float]:
         """
         Measures packet loss by pinging one or more hosts.
         
@@ -345,7 +380,7 @@ class NetworkMetricsCollector:
             packets: Number of packets to send (defaults to configured count)
             
         Returns:
-            Packet loss as a percentage (0-100)
+            Tuple of (packet loss percent, average ping latency in ms)
         """
         if hosts is None:
             hosts = self.packet_loss_hosts
@@ -353,20 +388,27 @@ class NetworkMetricsCollector:
             packets = self.packet_loss_packets
 
         if not hosts:
-            return 0.0
+            return 0.0, 0.0
 
         losses = []
+        pings = []
         self._debug_packet_loss(f"[packet_loss] hosts={hosts} packets={packets}")
         for host in hosts:
-            loss = self._measure_packet_loss_host(host, packets)
+            loss, ping_ms = self._measure_packet_loss_host(host, packets)
             losses.append(loss)
-            self._debug_packet_loss(f"[packet_loss] host={host} loss={loss:.2f}%")
+            if ping_ms > 0:
+                pings.append(ping_ms)
+            self._debug_packet_loss(
+                f"[packet_loss] host={host} loss={loss:.2f}% ping_ms={ping_ms:.2f}"
+            )
 
         # Use the worst observed loss to surface intermittent issues.
         self._debug_packet_loss(f"[packet_loss] losses={losses}")
-        return max(losses) if losses else 0.0
+        loss_percent = max(losses) if losses else 0.0
+        avg_ping = (sum(pings) / len(pings)) if pings else 0.0
+        return loss_percent, avg_ping
 
-    def _measure_packet_loss_host(self, host: str, packets: int) -> float:
+    def _measure_packet_loss_host(self, host: str, packets: int) -> Tuple[float, float]:
         """
         Measures packet loss by pinging a single host.
         """
@@ -378,15 +420,19 @@ class NetworkMetricsCollector:
                 try:
                     loss_count = 0
                     timeouts = 0
+                    latencies_ms = []
                     for _ in range(packets):
                         result = ping3.ping(host, timeout=self.timeout)
                         if result is None or result is False:
                             loss_count += 1
                             timeouts += 1
+                        else:
+                            latencies_ms.append(result * 1000)
                     self._debug_packet_loss(
                         f"[packet_loss] ping3 host={host} timeouts={timeouts}/{packets}"
                     )
-                    return (loss_count / packets) * 100
+                    avg_ping = (sum(latencies_ms) / len(latencies_ms)) if latencies_ms else 0.0
+                    return (loss_count / packets) * 100, avg_ping
                 except Exception:
                     # If ping3 is installed but lacks permissions (common on Windows), fall back.
                     return self._subprocess_ping(host, packets)
@@ -395,9 +441,9 @@ class NetworkMetricsCollector:
                 return self._subprocess_ping(host, packets)
         except Exception as e:
             print(f"Packet loss measurement failed: {e}", file=sys.stderr)
-            return 0.0
+            return 0.0, 0.0
     
-    def _subprocess_ping(self, host: str, packets: int) -> float:
+    def _subprocess_ping(self, host: str, packets: int) -> Tuple[float, float]:
         """
         Fallback packet loss measurement using subprocess ping command.
         
@@ -406,7 +452,7 @@ class NetworkMetricsCollector:
             packets: Number of packets to send
             
         Returns:
-            Packet loss as a percentage (0-100)
+            Tuple of (packet loss percent, average ping latency in ms)
         """
         try:
             import re
@@ -424,14 +470,15 @@ class NetworkMetricsCollector:
                     self._debug_packet_loss(f"[packet_loss] ping output:\n{snippet[:600]}")
                 # Parse Windows ping output for loss count (e.g., "Lost = 0")
                 match = re.search(r"lost\s*=\s*(\d+)", output_text)
+                loss_percent = None
                 if match:
                     loss_packets = int(match.group(1))
                     loss_percent = (loss_packets / packets) * 100 if packets > 0 else 0.0
-                    return loss_percent
                 # Try alternate format: "X% loss"
-                match = re.search(r"(\d+)%\s*loss", output_text)
-                if match:
-                    return float(match.group(1))
+                if loss_percent is None:
+                    match = re.search(r"(\d+)%\s*loss", output_text)
+                    if match:
+                        loss_percent = float(match.group(1))
             else:
                 # macOS and Linux
                 per_packet_timeout = min(self.timeout, 2)
@@ -445,8 +492,19 @@ class NetworkMetricsCollector:
                     self._debug_packet_loss(f"[packet_loss] ping output:\n{snippet[:600]}")
                 # Parse Unix ping output: looks for "X% packet loss"
                 match = re.search(r"(\d+\.?\d*)%\s*(?:packet\s*)?loss", output_text)
-                if match:
-                    return float(match.group(1))
+                loss_percent = float(match.group(1)) if match else None
+
+            # Parse per-reply times (ms) for average latency
+            times = []
+            for match in re.findall(r"time[=<]\s*([0-9.]+)", output_text):
+                try:
+                    times.append(float(match))
+                except ValueError:
+                    continue
+            avg_ping = (sum(times) / len(times)) if times else 0.0
+
+            if loss_percent is not None:
+                return loss_percent, avg_ping
             
             # Fallback: count successful replies by TTL/time tokens (locale-agnostic)
             reply_count = len(re.findall(r"ttl=", output_text))
@@ -454,20 +512,21 @@ class NetworkMetricsCollector:
                 reply_count = len(re.findall(r"time[=<]", output_text))
             if reply_count > 0 and packets > 0:
                 loss_packets = max(packets - reply_count, 0)
-                return (loss_packets / packets) * 100
+                loss_percent = (loss_packets / packets) * 100
+                return loss_percent, avg_ping
 
             if output.returncode != 0 and packets > 0:
-                return 100.0
+                return 100.0, avg_ping
 
             # If no losses detected, return 0%
-            return 0.0
+            return 0.0, avg_ping
         except subprocess.TimeoutExpired:
             # If ping hangs, treat as 100% loss to avoid false zeros.
             self._debug_packet_loss("[packet_loss] ping timed out; treating as 100% loss")
-            return 100.0
+            return 100.0, 0.0
         except Exception as e:
             print(f"Subprocess ping failed: {e}", file=sys.stderr)
-            return 0.0
+            return 0.0, 0.0
 
 @dataclass
 class MonitorReport:
