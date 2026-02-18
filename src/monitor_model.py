@@ -136,9 +136,17 @@ class DataCollector:
             print(message, file=sys.stderr)
 
     def _get_speedtest_client(self):
+        # PythonAnywhere's WSGI error log stream doesn't provide fileno(),
+        # which breaks speedtest during import. Fall back if stderr isn't a real fd.
+        try:
+            sys.stderr.fileno()
+        except Exception:
+            return None
+
         try:
             import speedtest
-        except ImportError:
+        except Exception as e:
+            print(f"Speedtest import failed: {e}", file=sys.stderr)
             return None
 
         now = time.time()
