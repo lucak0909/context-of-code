@@ -29,7 +29,6 @@ class NetworkMetrics:
     download_speed_mbps: float  # Megabits per second
     upload_speed_mbps: float  # Megabits per second
     ip_address: str  # Local IP
-    public_ip: str  # Public IP
     test_method: str  # Method used for speed test
 
 
@@ -76,7 +75,6 @@ class DataCollector:
                 packet_loss,
                 ping_ms,
                 local_ip,
-                public_ip,
             ) = self._collect_network_metrics_parallel()
 
         new_metrics = NetworkMetrics(
@@ -85,7 +83,6 @@ class DataCollector:
             packet_loss_percent=packet_loss,
             ping=ping_ms,
             ip_address=local_ip,
-            public_ip=public_ip,
             test_method=method,
         )
 
@@ -106,7 +103,6 @@ class DataCollector:
         packet_loss = 0.0
         ping_ms = 0.0
         local_ip = "127.0.0.1"
-        public_ip = "Unknown"
 
         def download_task() -> Tuple[float, str]:
             client = self._get_speedtest_client(cache_key="download")
@@ -122,7 +118,6 @@ class DataCollector:
                 "upload": executor.submit(upload_task),
                 "packet_loss": executor.submit(self._measure_packet_loss),
                 "local_ip": executor.submit(self._get_local_ip),
-                "public_ip": executor.submit(self._get_public_ip),
             }
 
             for name, future in futures.items():
@@ -140,8 +135,6 @@ class DataCollector:
                     packet_loss, ping_ms = result
                 elif name == "local_ip":
                     local_ip = result
-                elif name == "public_ip":
-                    public_ip = result
 
         return (
             download_speed,
@@ -150,7 +143,6 @@ class DataCollector:
             packet_loss,
             ping_ms,
             local_ip,
-            public_ip,
         )
 
     def _get_local_ip(self) -> str:
@@ -162,27 +154,6 @@ class DataCollector:
         except Exception:
             return "127.0.0.1"
 
-    def _get_public_ip(self) -> str:
-        """Attempts to fetch the public IP address."""
-        try:
-            import urllib.request
-
-            services = [
-                "https://api.ipify.org?format=text",
-                "https://ifconfig.me/ip",
-                "https://checkip.amazonaws.com",
-            ]
-            for url in services:
-                try:
-                    with urllib.request.urlopen(url, timeout=5) as response:
-                        ip = response.read().decode().strip()
-                        if ip:
-                            return ip
-                except Exception:
-                    continue
-        except Exception:
-            pass
-        return "Unknown"
 
     def _load_packet_loss_debug(self) -> bool:
         raw = os.environ.get("PACKET_LOSS_DEBUG", "").strip().lower()

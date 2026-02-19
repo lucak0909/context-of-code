@@ -94,6 +94,7 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
                     "down_mbps": metrics.download_speed_mbps,
                     "up_mbps": metrics.upload_speed_mbps,
                     "test_method": metrics.test_method,
+                    "ip": metrics.ip_address,
                 }
                 queue.enqueue(payload)
                 sent = queue.flush(db)

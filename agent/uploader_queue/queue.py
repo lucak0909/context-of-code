@@ -98,6 +98,7 @@ class UploadQueue:
                 down_mbps=_parse_optional_float(payload.get("down_mbps"), default=0.0),
                 up_mbps=_parse_optional_float(payload.get("up_mbps"), default=0.0),
                 test_method=payload.get("test_method"),
+                ip=payload.get("ip"),
                 ts=ts,
                 room_id=None,
             )

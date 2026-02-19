@@ -144,6 +144,7 @@ class Database:
         down_mbps: float,
         up_mbps: float,
         test_method: Optional[str] = None,
+        ip: Optional[str] = None,
         ts: Optional[datetime] = None,
         room_id: Optional[UUID] = None,
     ) -> None:
@@ -159,7 +160,8 @@ class Database:
                 packet_loss_pct,
                 down_mbps,
                 up_mbps,
-                test_method
+                test_method,
+                ip
             )
             values (
                 :device_id,
@@ -170,7 +172,8 @@ class Database:
                 :packet_loss_pct,
                 :down_mbps,
                 :up_mbps,
-                :test_method
+                :test_method,
+                :ip
             )
             """
         )
@@ -186,6 +189,7 @@ class Database:
                     "down_mbps": down_mbps,
                     "up_mbps": up_mbps,
                     "test_method": test_method,
+                    "ip": ip,
                 },
             )
 
