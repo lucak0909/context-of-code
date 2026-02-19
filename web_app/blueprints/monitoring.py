@@ -1,7 +1,7 @@
 import dataclasses
 from flask import Blueprint, jsonify
 from flask.views import MethodView
-from agent.collector import DataCollector, MonitorReport
+from agent.pc_data_collector.collector import DataCollector, MonitorReport
 
 monitoring_bp = Blueprint('monitoring', __name__)
 

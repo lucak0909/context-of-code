@@ -42,7 +42,16 @@ python -m common.database.test_connection
 
 Run the agent console login/register flow:
 ```bash
-python -m agent.cli.console_auth
+python -m agent.pc_data_collector.cli.console_auth
+```
+
+Run the agent (same as login flow, then monitoring):
+```bash
+python -m agent.pc_data_collector
+```
+Shortcut:
+```bash
+python -m agent
 ```
 
 Run the Flask app (from the project root).

@@ -2,7 +2,7 @@
 import json
 import sys
 
-from agent.collector import DataCollector, MonitorReport, NetworkMetrics
+from agent.pc_data_collector.collector import DataCollector, MonitorReport, NetworkMetrics
 from common.utils.logging_setup import setup_logger
 
 logger = setup_logger(__name__)
