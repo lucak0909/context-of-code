@@ -1,5 +1,6 @@
 from urllib.parse import quote_plus
 from typing import Optional
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
@@ -82,6 +83,111 @@ class Database:
         if not stored:
             return False
         return verify_password(password, stored)
+
+    def get_device_by_user_and_name(self, user_id: UUID, name: str) -> Optional[Device]:
+        query = text(
+            """
+            select id, user_id, name, device_type, created_at
+            from devices
+            where user_id = :user_id and name = :name
+            order by created_at asc
+            limit 1
+            """
+        )
+        with self.engine.begin() as conn:
+            row = conn.execute(query, {"user_id": user_id, "name": name}).fetchone()
+        if not row:
+            return None
+        return Device(
+            id=row.id,
+            user_id=row.user_id,
+            name=row.name,
+            device_type=row.device_type,
+            created_at=row.created_at,
+        )
+
+    def create_device(self, user_id: UUID, name: str, device_type: str = "pc") -> Device:
+        query = text(
+            """
+            insert into devices (user_id, name, device_type)
+            values (:user_id, :name, :device_type)
+            returning id, user_id, name, device_type, created_at
+            """
+        )
+        with self.engine.begin() as conn:
+            row = conn.execute(
+                query,
+                {"user_id": user_id, "name": name, "device_type": device_type},
+            ).fetchone()
+        if not row:
+            raise RuntimeError("Failed to create device.")
+        return Device(
+            id=row.id,
+            user_id=row.user_id,
+            name=row.name,
+            device_type=row.device_type,
+            created_at=row.created_at,
+        )
+
+    def get_or_create_device(self, user_id: UUID, name: str, device_type: str = "pc") -> Device:
+        device = self.get_device_by_user_and_name(user_id, name)
+        if device:
+            return device
+        return self.create_device(user_id, name, device_type=device_type)
+
+    def insert_desktop_network_sample(
+        self,
+        device_id: UUID,
+        *,
+        latency_ms: float,
+        packet_loss_pct: float,
+        down_mbps: float,
+        up_mbps: float,
+        test_method: Optional[str] = None,
+        ts: Optional[datetime] = None,
+        room_id: Optional[UUID] = None,
+    ) -> None:
+        timestamp = ts or datetime.now(timezone.utc)
+        query = text(
+            """
+            insert into samples (
+                device_id,
+                room_id,
+                sample_type,
+                ts,
+                latency_ms,
+                packet_loss_pct,
+                down_mbps,
+                up_mbps,
+                test_method
+            )
+            values (
+                :device_id,
+                :room_id,
+                'desktop_network',
+                :ts,
+                :latency_ms,
+                :packet_loss_pct,
+                :down_mbps,
+                :up_mbps,
+                :test_method
+            )
+            """
+        )
+        with self.engine.begin() as conn:
+            conn.execute(
+                query,
+                {
+                    "device_id": device_id,
+                    "room_id": room_id,
+                    "ts": timestamp,
+                    "latency_ms": latency_ms,
+                    "packet_loss_pct": packet_loss_pct,
+                    "down_mbps": down_mbps,
+                    "up_mbps": up_mbps,
+                    "test_method": test_method,
+                },
+            )
 
     @staticmethod
     def _build_database_url(dsn: Optional[str]) -> str:

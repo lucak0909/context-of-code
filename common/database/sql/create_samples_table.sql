@@ -19,6 +19,7 @@ create table samples (
     packet_loss_pct numeric,
     down_mbps numeric,
     up_mbps numeric,
+    test_method text,
 
     -- Cloud latency metrics
     latency_eu_ms numeric,
