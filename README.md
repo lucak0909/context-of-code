@@ -54,6 +54,12 @@ Shortcut:
 python -m agent
 ```
 
+Globalping cloud latency collector (runs alongside the PC collector):
+- Default interval: 300s (`GLOBALPING_INTERVAL_SECONDS`)
+- Target: `globalping.io` (`GLOBALPING_TARGET`)
+- Locations: EU=Germany, US=Virginia (EST), Asia=China
+  - Override with `GLOBALPING_LOC_EU`, `GLOBALPING_LOC_US`, `GLOBALPING_LOC_ASIA`
+
 Run the Flask app (from the project root).
 
 Option 1 (simple):

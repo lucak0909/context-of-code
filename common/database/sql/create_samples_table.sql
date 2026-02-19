@@ -20,6 +20,7 @@ create table samples (
     down_mbps numeric,
     up_mbps numeric,
     test_method text,
+    ip text,
 
     -- Cloud latency metrics
     latency_eu_ms numeric,

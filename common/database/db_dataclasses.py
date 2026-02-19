@@ -38,4 +38,5 @@ class Sample:
     link_speed_mbps: Optional[float]
     is_connected: Optional[bool]
     test_method: Optional[str]
+    ip: Optional[str]
     created_at: datetime
