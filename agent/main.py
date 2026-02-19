@@ -12,8 +12,7 @@ INTERVAL_SECONDS = 30
 
 def collect_once(collector: DataCollector) -> None:
     metrics = collector.get_network_metrics(use_cache=False)
-    info = collector.get_device_info()
-    report = MonitorReport(device_info=info, network_metrics=metrics)
+    report = MonitorReport(network_metrics=metrics)
     logger.info(report.to_json())
 
 

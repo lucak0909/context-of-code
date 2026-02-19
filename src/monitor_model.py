@@ -2,7 +2,7 @@
 import json
 import sys
 
-from agent.collector import DataCollector, DeviceInfo, MonitorReport, NetworkMetrics
+from agent.collector import DataCollector, MonitorReport, NetworkMetrics
 from src.utils.logging_setup import setup_logger
 
 logger = setup_logger(__name__)
@@ -13,8 +13,7 @@ def main() -> None:
         collector = DataCollector()
         # Non-cached for immediate CLI feedback
         metrics = collector.get_network_metrics(use_cache=False)
-        info = collector.get_device_info()
-        report = MonitorReport(device_info=info, network_metrics=metrics)
+        report = MonitorReport(network_metrics=metrics)
         logger.info(report.to_json())
     except Exception as exc:
         logger.exception(json.dumps({"error": str(exc)}))

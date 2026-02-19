@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import dataclasses
-import getpass
 import json
 import os
 import platform
@@ -17,16 +16,6 @@ from src.utils.timer import BlockTimer
 from src.utils.logging_setup import setup_logger
 
 logger = setup_logger(__name__)
-
-
-@dataclass
-class DeviceInfo:
-    """
-    Holds static information about the device.
-    These values are unlikely to change during a session.
-    """
-
-    username: str
 
 
 @dataclass
@@ -63,10 +52,6 @@ class DataCollector:
         self.packet_loss_hosts = self._load_packet_loss_hosts()
         self.packet_loss_packets = self._load_packet_loss_packets()
         self._packet_loss_debug = self._load_packet_loss_debug()
-
-    def get_device_info(self) -> DeviceInfo:
-        """Collects static device information."""
-        return DeviceInfo(username=getpass.getuser())
 
     def get_network_metrics(self, use_cache: bool = True) -> NetworkMetrics:
         """
@@ -396,7 +381,6 @@ class DataCollector:
 
 @dataclass
 class MonitorReport:
-    device_info: DeviceInfo
     network_metrics: NetworkMetrics
 
     def to_json(self) -> str:

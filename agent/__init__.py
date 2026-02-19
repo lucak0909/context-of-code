@@ -1,8 +1,7 @@
-from .collector import DataCollector, DeviceInfo, MonitorReport, NetworkMetrics
+from .collector import DataCollector, MonitorReport, NetworkMetrics
 
 __all__ = [
     "DataCollector",
-    "DeviceInfo",
     "MonitorReport",
     "NetworkMetrics",
 ]
