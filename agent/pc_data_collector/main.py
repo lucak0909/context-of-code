@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import platform
 import time
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from agent.collector import DataCollector, MonitorReport
+from agent.pc_data_collector.collector import DataCollector, MonitorReport
+from agent.uploader_queue import UploadQueue
 from common.database.db_operations import Database
 from common.utils.logging_setup import setup_logger
 
@@ -47,6 +49,7 @@ def _default_device_name() -> str:
 def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> None:
     collector = DataCollector()
     db = Database()
+    queue = UploadQueue()
     device_id: Optional[UUID] = None
     try:
         device = db.get_or_create_device(
@@ -65,17 +68,21 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
             start = time.monotonic()
             try:
                 metrics = collector.get_network_metrics(use_cache=False)
-                db.insert_desktop_network_sample(
-                    device_id=device_id,
-                    latency_ms=metrics.ping,
-                    packet_loss_pct=metrics.packet_loss_percent,
-                    down_mbps=metrics.download_speed_mbps,
-                    up_mbps=metrics.upload_speed_mbps,
-                    test_method=metrics.test_method,
-                )
-                logger.info("Sample saved for device=%s.", device_id)
+                payload = {
+                    "device_id": str(device_id),
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "latency_ms": metrics.ping,
+                    "packet_loss_pct": metrics.packet_loss_percent,
+                    "down_mbps": metrics.download_speed_mbps,
+                    "up_mbps": metrics.upload_speed_mbps,
+                    "test_method": metrics.test_method,
+                }
+                queue.enqueue(payload)
+                sent = queue.flush(db)
+                if sent:
+                    logger.info("Uploaded %s queued sample(s).", sent)
             except Exception:
-                logger.exception("Agent collection or DB insert failed")
+                logger.exception("Agent collection or upload failed")
 
             elapsed = time.monotonic() - start
             sleep_time = max(0.0, interval_seconds - elapsed)

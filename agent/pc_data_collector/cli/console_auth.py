@@ -8,7 +8,7 @@ from uuid import UUID
 from common.auth.passwords import hash_password
 from common.database.db_operations import Database
 from common.utils.logging_setup import setup_logger
-from agent.main import run_with_user
+from agent.pc_data_collector.main import run_with_user
 
 logger = setup_logger("console_auth")
 
