@@ -5,6 +5,13 @@ from typing import Optional
 
 
 @dataclass
+class User:
+    id: UUID
+    email: str
+    created_at: datetime
+
+
+@dataclass
 class Device:
     id: UUID
     user_id: UUID
@@ -30,4 +37,5 @@ class Sample:
     wifi_rssi_dbm: float
     link_speed_mbps: Optional[float]
     is_connected: Optional[bool]
+    test_method: Optional[str]
     created_at: datetime

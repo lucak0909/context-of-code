@@ -1,5 +1,5 @@
 from flask import Flask
-from src.blueprints.monitoring import monitoring_bp
+from web_app.blueprints.monitoring import monitoring_bp
 
 app = Flask(__name__)
 

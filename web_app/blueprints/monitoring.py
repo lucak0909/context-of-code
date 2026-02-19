@@ -1,7 +1,7 @@
 import dataclasses
 from flask import Blueprint, jsonify
 from flask.views import MethodView
-from src.monitor_model import DataCollector, MonitorReport
+from agent.collector import DataCollector, MonitorReport
 
 monitoring_bp = Blueprint('monitoring', __name__)
 
@@ -9,9 +9,8 @@ collector = DataCollector()
 
 def build_report_dict():
     # Use the global collector instance
-    device_info = collector.get_device_info()
     metrics = collector.get_network_metrics()
-    report = MonitorReport(device_info=device_info, network_metrics=metrics)
+    report = MonitorReport(network_metrics=metrics)
     return dataclasses.asdict(report)
 
 @monitoring_bp.route('/')
