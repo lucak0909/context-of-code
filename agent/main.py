@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 
 from agent.collector import DataCollector, MonitorReport
-from src.utils.logging_setup import setup_logger
+from common.utils.logging_setup import setup_logger
 
 logger = setup_logger("agent")
 

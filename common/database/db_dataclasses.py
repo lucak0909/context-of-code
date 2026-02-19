@@ -5,6 +5,13 @@ from typing import Optional
 
 
 @dataclass
+class User:
+    id: UUID
+    email: str
+    created_at: datetime
+
+
+@dataclass
 class Device:
     id: UUID
     user_id: UUID

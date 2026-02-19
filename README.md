@@ -37,27 +37,32 @@
 
 Run modules from the project root so package imports resolve correctly:
 ```bash
-python -m src.database.test_connection
+python -m common.database.test_connection
+```
+
+Run the agent console login/register flow:
+```bash
+python -m agent.cli.console_auth
 ```
 
 Run the Flask app (from the project root).
 
 Option 1 (simple):
 ```bash
-python -m src.app
+python -m web_app.app
 ```
 
 Option 2 (Flask CLI):
 ```bash
-flask --app src.app --debug run
+flask --app web_app.app --debug run
 ```
 
 ## Logging
 
-The project uses a custom logging setup via `src/logging_setup.py`.
+The project uses a custom logging setup via `common/utils/logging_setup.py`.
 
 ```python
-from src.logging_setup import setup_logger
+from common.utils.logging_setup import setup_logger
 
 logger = setup_logger()
 logger.info("This is an info message")
@@ -66,7 +71,7 @@ logger.critical("This is a critical message")
 ```
 
 **Features:**
-- Logs are written to `src/logs/` by default (override with `LOGS_DIR` or `logs_dir`).
+- Logs are written to `common/logs/` by default (override with `LOGS_DIR` or `logs_dir`).
 - Log files are named `{HIGHEST_LEVEL}_{timestamp}.log` based on the highest severity logged.
 - Console output is colorized (files are plain text).
 

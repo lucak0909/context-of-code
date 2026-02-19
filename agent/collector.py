@@ -12,8 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from src.utils.timer import BlockTimer
-from src.utils.logging_setup import setup_logger
+from common.utils.timer import BlockTimer
+from common.utils.logging_setup import setup_logger
 
 logger = setup_logger(__name__)
 
