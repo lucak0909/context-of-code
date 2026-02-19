@@ -13,6 +13,11 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple
 from src.utils.timer import BlockTimer
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
+
 logger = logging.getLogger(__name__)
 
 @dataclass
