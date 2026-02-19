@@ -12,13 +12,9 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple
 from src.utils.timer import BlockTimer
+from src.utils.logging_setup import setup_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-)
-
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 @dataclass
 class DeviceInfo:
