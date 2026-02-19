@@ -8,9 +8,13 @@ import os
 import time
 import subprocess
 import socket
+import logging
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple
 from src.utils.timer import BlockTimer
+from src.utils.logging_setup import setup_logger
+
+logger = setup_logger(__name__)
 
 @dataclass
 class DeviceInfo:
@@ -133,7 +137,7 @@ class DataCollector:
 
     def _debug_packet_loss(self, message: str) -> None:
         if self._packet_loss_debug:
-            print(message, file=sys.stderr)
+            logger.debug(message)
 
     def _get_speedtest_client(self):
         try:
@@ -152,7 +156,7 @@ class DataCollector:
             self._speedtest_last_init = now
             return client
         except Exception as e:
-            print(f"Speedtest initialization failed: {e}", file=sys.stderr)
+            logger.warning("Speedtest initialization failed: %s", e)
             return None
 
     def _measure_download_speed(self, speedtest_client=None) -> Tuple[float, str]:
@@ -164,7 +168,7 @@ class DataCollector:
                 download_speed_bps = speedtest_client.download()
                 return (download_speed_bps / 1_000_000), "Official Speedtest CLI"
             except Exception as e:
-                print(f"Speedtest download failed: {e}", file=sys.stderr)
+                logger.warning("Speedtest download failed: %s", e)
 
         speed = self._simple_download_test()
         return speed, "Simple HTTP Download"
@@ -178,7 +182,7 @@ class DataCollector:
                 upload_speed_bps = speedtest_client.upload()
                 return (upload_speed_bps / 1_000_000)
             except Exception as e:
-                print(f"Speedtest upload failed: {e}", file=sys.stderr)
+                logger.warning("Speedtest upload failed: %s", e)
 
         return self._simple_upload_test()
     
@@ -208,7 +212,7 @@ class DataCollector:
                     continue
             return 0.0
         except Exception as e:
-            print(f"Simple download test failed: {e}", file=sys.stderr)
+            logger.warning("Simple download test failed: %s", e)
             return 0.0
 
     def _simple_upload_test(self) -> float:
@@ -229,7 +233,7 @@ class DataCollector:
                     continue
             return 0.0
         except Exception as e:
-            print(f"Simple upload test failed: {e}", file=sys.stderr)
+            logger.warning("Simple upload test failed: %s", e)
             return 0.0
     
     def _load_packet_loss_hosts(self) -> list:
@@ -322,9 +326,9 @@ def main():
         metrics = collector.get_network_metrics(use_cache=False)
         info = collector.get_device_info()
         report = MonitorReport(device_info=info, network_metrics=metrics)
-        print(report.to_json())
+        logger.info(report.to_json())
     except Exception as e:
-        print(json.dumps({"error": str(e)}), file=sys.stderr)
+        logger.exception(json.dumps({"error": str(e)}))
         sys.exit(1)
 
 if __name__ == "__main__":
