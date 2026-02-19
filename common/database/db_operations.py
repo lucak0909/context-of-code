@@ -189,6 +189,52 @@ class Database:
                 },
             )
 
+    def insert_cloud_latency_sample(
+        self,
+        device_id: UUID,
+        *,
+        latency_eu_ms: Optional[float],
+        latency_us_ms: Optional[float],
+        latency_asia_ms: Optional[float],
+        ts: Optional[datetime] = None,
+        room_id: Optional[UUID] = None,
+    ) -> None:
+        timestamp = ts or datetime.now(timezone.utc)
+        query = text(
+            """
+            insert into samples (
+                device_id,
+                room_id,
+                sample_type,
+                ts,
+                latency_eu_ms,
+                latency_us_ms,
+                latency_asia_ms
+            )
+            values (
+                :device_id,
+                :room_id,
+                'cloud_latency',
+                :ts,
+                :latency_eu_ms,
+                :latency_us_ms,
+                :latency_asia_ms
+            )
+            """
+        )
+        with self.engine.begin() as conn:
+            conn.execute(
+                query,
+                {
+                    "device_id": device_id,
+                    "room_id": room_id,
+                    "ts": timestamp,
+                    "latency_eu_ms": latency_eu_ms,
+                    "latency_us_ms": latency_us_ms,
+                    "latency_asia_ms": latency_asia_ms,
+                },
+            )
+
     @staticmethod
     def _build_database_url(dsn: Optional[str]) -> str:
         if dsn:

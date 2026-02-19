@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import platform
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 from agent.pc_data_collector.collector import DataCollector, MonitorReport
+from agent.cloud_latency_collector import run_cloud_latency_loop
 from agent.uploader_queue import UploadQueue
 from common.database.db_operations import Database
 from common.utils.logging_setup import setup_logger
@@ -51,6 +53,8 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
     db = Database()
     queue = UploadQueue()
     device_id: Optional[UUID] = None
+    stop_event = threading.Event()
+    cloud_thread: Optional[threading.Thread] = None
     try:
         device = db.get_or_create_device(
             user_id=user_id,
@@ -64,11 +68,25 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
             device_id,
             interval_seconds,
         )
+
+        cloud_thread = threading.Thread(
+            target=run_cloud_latency_loop,
+            kwargs={
+                "device_id": device_id,
+                "queue": queue,
+                "db": db,
+                "stop_event": stop_event,
+            },
+            daemon=True,
+        )
+        cloud_thread.start()
+
         while True:
             start = time.monotonic()
             try:
                 metrics = collector.get_network_metrics(use_cache=False)
                 payload = {
+                    "sample_type": "desktop_network",
                     "device_id": str(device_id),
                     "ts": datetime.now(timezone.utc).isoformat(),
                     "latency_ms": metrics.ping,
@@ -87,10 +105,13 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
             elapsed = time.monotonic() - start
             sleep_time = max(0.0, interval_seconds - elapsed)
             if sleep_time:
-                time.sleep(sleep_time)
+                stop_event.wait(sleep_time)
     except KeyboardInterrupt:
         logger.info("Agent stopped.")
     finally:
+        stop_event.set()
+        if cloud_thread:
+            cloud_thread.join(timeout=5)
         db.close()
 
 

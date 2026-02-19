@@ -1,1 +1,1 @@
-__all__ = ["pc_data_collector", "uploader_queue"]
+__all__ = ["pc_data_collector", "cloud_latency_collector", "uploader_queue"]
