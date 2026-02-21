@@ -10,7 +10,7 @@ from uuid import UUID
 from agent.pc_data_collector.collector import DataCollector, MonitorReport
 from agent.cloud_latency_collector import run_cloud_latency_loop
 from agent.uploader_queue import UploadQueue
-from common.database.db_operations import Database
+
 from common.utils.logging_setup import setup_logger
 
 logger = setup_logger("agent")
@@ -50,17 +50,22 @@ def _default_device_name() -> str:
 
 def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> None:
     collector = DataCollector()
-    db = Database()
+
     queue = UploadQueue()
     device_id: Optional[UUID] = None
     stop_event = threading.Event()
     cloud_thread: Optional[threading.Thread] = None
     try:
-        device = db.get_or_create_device(
-            user_id=user_id,
-            name=_default_device_name(),
-            device_type="pc",
-        )
+        from common.database.db_operations import Database
+        db = Database()
+        try:
+            device = db.get_or_create_device(
+                user_id=user_id,
+                name=_default_device_name(),
+                device_type="pc",
+            )
+        finally:
+            db.close()
         device_id = device.id
         logger.info(
             "Agent started for user=%s device=%s (interval=%ss).",
@@ -74,7 +79,6 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
             kwargs={
                 "device_id": device_id,
                 "queue": queue,
-                "db": db,
                 "stop_event": stop_event,
             },
             daemon=True,
@@ -97,7 +101,7 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
                     "ip": metrics.ip_address,
                 }
                 queue.enqueue(payload)
-                sent = queue.flush(db)
+                sent = queue.flush()
                 if sent:
                     logger.info("Uploaded %s queued sample(s).", sent)
             except Exception:
@@ -113,7 +117,6 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
         stop_event.set()
         if cloud_thread:
             cloud_thread.join(timeout=5)
-        db.close()
 
 
 if __name__ == "__main__":

@@ -3,31 +3,56 @@ from __future__ import annotations
 import json
 import os
 import threading
-from datetime import datetime, timezone
+import urllib.error
 from pathlib import Path
 from typing import Iterable, Optional
-from uuid import UUID
 
-from common.database.db_operations import Database
+from common.settings import get_settings
 from common.utils.logging_setup import setup_logger
 
 logger = setup_logger("uploader_queue")
 
+# ── Default Aggregator API URL (configurable via env var) ────────────────────
+DEFAULT_API_URL = "http://127.0.0.1:5000/api/ingest"
+REQUEST_TIMEOUT = int(os.getenv("AGGREGATOR_TIMEOUT_SECONDS", "10"))
+
 
 class UploadQueue:
-    def __init__(self, path: Optional[str] = None) -> None:
+    """
+    A file-backed queue that buffers metric payloads as JSONL lines.
+
+    On flush(), each queued payload is transmitted to the Aggregator API
+    via HTTP POST.  Payloads that fail to send are kept in the queue file
+    for the next attempt (offline-safe).
+    """
+
+    def __init__(
+        self,
+        path: Optional[str] = None,
+        api_url: Optional[str] = None,
+    ) -> None:
         default_path = os.getenv("AGENT_QUEUE_PATH", "agent_queue.jsonl")
         self._path = Path(path or default_path)
+        self._api_url = api_url or get_settings().aggregator_api_url
         self._lock = threading.Lock()
 
+    # ── Public API ───────────────────────────────────────────────────────
+
     def enqueue(self, payload: dict) -> None:
+        """Append a JSON payload to the queue file (thread-safe)."""
         with self._lock:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             line = json.dumps(payload, separators=(",", ":"))
             with self._path.open("a", encoding="utf-8") as handle:
                 handle.write(line + "\n")
 
-    def flush(self, db: Database) -> int:
+    def flush(self) -> int:
+        """
+        Read every queued payload and POST it to the Aggregator API.
+
+        Returns the number of payloads successfully sent.
+        Payloads that fail are written back to the queue file for retry.
+        """
         with self._lock:
             if not self._path.exists():
                 return 0
@@ -48,7 +73,7 @@ class UploadQueue:
                     continue
                 try:
                     payload = json.loads(line)
-                    if self._send_payload(db, payload):
+                    if self._send_payload(payload):
                         sent += 1
                     else:
                         remaining.append(line)
@@ -59,7 +84,10 @@ class UploadQueue:
             self._rewrite_queue(remaining)
             return sent
 
+    # ── Internal helpers ─────────────────────────────────────────────────
+
     def _rewrite_queue(self, remaining: Iterable[str]) -> None:
+        """Atomically rewrite the queue file with only the unsent lines."""
         tmp_path = self._path.with_suffix(self._path.suffix + ".tmp")
         try:
             with tmp_path.open("w", encoding="utf-8") as handle:
@@ -74,66 +102,38 @@ class UploadQueue:
             except OSError:
                 pass
 
-    def _send_payload(self, db: Database, payload: dict) -> bool:
-        device_id_raw = payload.get("device_id")
-        if not device_id_raw:
-            raise ValueError("Missing device_id in queued payload.")
+    def _send_payload(self, payload: dict) -> bool:
+        """
+        POST a single JSON payload to the Aggregator API.
+
+        Returns True on success (HTTP 200), False otherwise.
+        The payload is sent as-is — the Aggregator API handles all
+        validation and persistence.
+        """
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            self._api_url,
+            data=data,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
 
         try:
-            device_id = UUID(str(device_id_raw))
+            with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+                if resp.status == 200:
+                    logger.debug("Payload accepted by aggregator.")
+                    return True
+                logger.warning(
+                    "Aggregator returned unexpected status %s.", resp.status
+                )
+                return False
+        except urllib.error.HTTPError as exc:
+            logger.warning(
+                "Aggregator HTTP error (%s): %s", exc.code, exc.reason
+            )
+        except urllib.error.URLError as exc:
+            logger.warning("Aggregator unreachable: %s", exc.reason)
         except Exception as exc:
-            raise ValueError("Invalid device_id in queued payload.") from exc
+            logger.warning("Aggregator request failed: %s", exc)
 
-        ts_value = payload.get("ts")
-        ts = self._parse_timestamp(ts_value)
-
-        sample_type = payload.get("sample_type") or "desktop_network"
-        if sample_type == "desktop_network":
-            db.insert_desktop_network_sample(
-                device_id=device_id,
-                latency_ms=_parse_optional_float(payload.get("latency_ms"), default=0.0),
-                packet_loss_pct=_parse_optional_float(
-                    payload.get("packet_loss_pct"), default=0.0
-                ),
-                down_mbps=_parse_optional_float(payload.get("down_mbps"), default=0.0),
-                up_mbps=_parse_optional_float(payload.get("up_mbps"), default=0.0),
-                test_method=payload.get("test_method"),
-                ip=payload.get("ip"),
-                ts=ts,
-                room_id=None,
-            )
-            return True
-
-        if sample_type == "cloud_latency":
-            db.insert_cloud_latency_sample(
-                device_id=device_id,
-                latency_eu_ms=_parse_optional_float(payload.get("latency_eu_ms")),
-                latency_us_ms=_parse_optional_float(payload.get("latency_us_ms")),
-                latency_asia_ms=_parse_optional_float(payload.get("latency_asia_ms")),
-                ts=ts,
-                room_id=None,
-            )
-            return True
-
-        raise ValueError(f"Unsupported sample_type: {sample_type}")
-
-    @staticmethod
-    def _parse_timestamp(value: Optional[str]) -> datetime:
-        if not value:
-            return datetime.now(timezone.utc)
-        try:
-            ts = datetime.fromisoformat(value)
-        except ValueError:
-            return datetime.now(timezone.utc)
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-        return ts
-
-
-def _parse_optional_float(value: Optional[object], default: Optional[float] = None) -> Optional[float]:
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+        return False

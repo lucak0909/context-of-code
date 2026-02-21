@@ -13,7 +13,6 @@ import urllib.error
 import urllib.request
 
 from agent.uploader_queue import UploadQueue
-from common.database.db_operations import Database
 from common.utils.logging_setup import setup_logger
 
 logger = setup_logger("cloud_latency")
@@ -305,7 +304,6 @@ def run_cloud_latency_loop(
     *,
     device_id: UUID,
     queue: UploadQueue,
-    db: Database,
     stop_event,
     interval_seconds: int = DEFAULT_INTERVAL_SECONDS,
 ) -> None:
@@ -323,7 +321,7 @@ def run_cloud_latency_loop(
                 "latency_asia_ms": result.latency_asia_ms,
             }
             queue.enqueue(payload)
-            sent = queue.flush(db)
+            sent = queue.flush()
             if sent:
                 logger.info("Uploaded %s queued sample(s).", sent)
         except Exception:

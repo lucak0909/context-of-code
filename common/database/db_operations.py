@@ -2,9 +2,10 @@ from urllib.parse import quote_plus
 from typing import Optional
 from datetime import datetime, timezone
 from uuid import UUID
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
-from .db_dataclasses import Device, Room, Sample, User
+from .db_dataclasses import Device, Room, Sample, User, Password
 from ..settings import get_settings
 from ..utils.logging_setup import setup_logger
 from ..auth.passwords import verify_password
@@ -25,58 +26,32 @@ class Database:
         self.engine.dispose()
 
     def get_user_by_email(self, email: str) -> Optional[User]:
-        query = text(
-            """
-            select id, email, created_at
-            from users
-            where email = :email
-            """
-        )
-        with self.engine.begin() as conn:
-            row = conn.execute(query, {"email": email}).fetchone()
-        if not row:
-            return None
-        return User(id=row.id, email=row.email, created_at=row.created_at)
+        with Session(self.engine) as session:
+            return session.scalars(select(User).where(User.email == email)).first()
 
     def create_user(self, email: str) -> UUID:
-        query = text(
-            """
-            insert into users (email)
-            values (:email)
-            returning id
-            """
-        )
-        with self.engine.begin() as conn:
-            row = conn.execute(query, {"email": email}).fetchone()
-        if not row:
-            raise RuntimeError("Failed to create user.")
-        return row.id
+        with Session(self.engine) as session:
+            user = User(email=email)
+            session.add(user)
+            session.commit()
+            return user.id
 
     def set_password(self, user_id: UUID, password_enc: str) -> None:
-        query = text(
-            """
-            insert into passwords (user_id, password_enc)
-            values (:user_id, :password_enc)
-            on conflict (user_id) do update
-            set password_enc = excluded.password_enc
-            """
-        )
-        with self.engine.begin() as conn:
-            conn.execute(query, {"user_id": user_id, "password_enc": password_enc})
+        with Session(self.engine) as session:
+            # Upsert logic
+            password_record = session.scalars(select(Password).where(Password.user_id == str(user_id))).first()
+            if password_record:
+                password_record.password_enc = password_enc
+            else:
+                session.add(Password(user_id=str(user_id), password_enc=password_enc))
+            session.commit()
 
     def get_password_hash(self, user_id: UUID) -> Optional[str]:
-        query = text(
-            """
-            select password_enc
-            from passwords
-            where user_id = :user_id
-            """
-        )
-        with self.engine.begin() as conn:
-            row = conn.execute(query, {"user_id": user_id}).fetchone()
-        if not row:
-            return None
-        return row.password_enc
+        with Session(self.engine) as session:
+            password_record = session.scalars(select(Password).where(Password.user_id == str(user_id))).first()
+            if not password_record:
+                return None
+            return password_record.password_enc
 
     def verify_user_password(self, user_id: UUID, password: str) -> bool:
         stored = self.get_password_hash(user_id)
@@ -85,49 +60,22 @@ class Database:
         return verify_password(password, stored)
 
     def get_device_by_user_and_name(self, user_id: UUID, name: str) -> Optional[Device]:
-        query = text(
-            """
-            select id, user_id, name, device_type, created_at
-            from devices
-            where user_id = :user_id and name = :name
-            order by created_at asc
-            limit 1
-            """
-        )
-        with self.engine.begin() as conn:
-            row = conn.execute(query, {"user_id": user_id, "name": name}).fetchone()
-        if not row:
-            return None
-        return Device(
-            id=row.id,
-            user_id=row.user_id,
-            name=row.name,
-            device_type=row.device_type,
-            created_at=row.created_at,
-        )
+        with Session(self.engine) as session:
+            return session.scalars(
+                select(Device)
+                .where(Device.user_id == str(user_id), Device.name == name)
+                .order_by(Device.created_at.asc())
+            ).first()
 
     def create_device(self, user_id: UUID, name: str, device_type: str = "pc") -> Device:
-        query = text(
-            """
-            insert into devices (user_id, name, device_type)
-            values (:user_id, :name, :device_type)
-            returning id, user_id, name, device_type, created_at
-            """
-        )
-        with self.engine.begin() as conn:
-            row = conn.execute(
-                query,
-                {"user_id": user_id, "name": name, "device_type": device_type},
-            ).fetchone()
-        if not row:
-            raise RuntimeError("Failed to create device.")
-        return Device(
-            id=row.id,
-            user_id=row.user_id,
-            name=row.name,
-            device_type=row.device_type,
-            created_at=row.created_at,
-        )
+        with Session(self.engine) as session:
+            device = Device(user_id=str(user_id), name=name, device_type=device_type)
+            session.add(device)
+            session.commit()
+            session.refresh(device)
+            # SQLAlchemy attaches returned object to session by default, expunge it so it can be returned
+            session.expunge(device)
+            return device
 
     def get_or_create_device(self, user_id: UUID, name: str, device_type: str = "pc") -> Device:
         device = self.get_device_by_user_and_name(user_id, name)
@@ -149,49 +97,21 @@ class Database:
         room_id: Optional[UUID] = None,
     ) -> None:
         timestamp = ts or datetime.now(timezone.utc)
-        query = text(
-            """
-            insert into samples (
-                device_id,
-                room_id,
-                sample_type,
-                ts,
-                latency_ms,
-                packet_loss_pct,
-                down_mbps,
-                up_mbps,
-                test_method,
-                ip
+        with Session(self.engine) as session:
+            sample = Sample(
+                device_id=str(device_id),
+                room_id=str(room_id) if room_id else None,
+                sample_type='desktop_network',
+                ts=timestamp,
+                latency_ms=latency_ms,
+                packet_loss_pct=packet_loss_pct,
+                down_mbps=down_mbps,
+                up_mbps=up_mbps,
+                test_method=test_method,
+                ip=ip
             )
-            values (
-                :device_id,
-                :room_id,
-                'desktop_network',
-                :ts,
-                :latency_ms,
-                :packet_loss_pct,
-                :down_mbps,
-                :up_mbps,
-                :test_method,
-                :ip
-            )
-            """
-        )
-        with self.engine.begin() as conn:
-            conn.execute(
-                query,
-                {
-                    "device_id": device_id,
-                    "room_id": room_id,
-                    "ts": timestamp,
-                    "latency_ms": latency_ms,
-                    "packet_loss_pct": packet_loss_pct,
-                    "down_mbps": down_mbps,
-                    "up_mbps": up_mbps,
-                    "test_method": test_method,
-                    "ip": ip,
-                },
-            )
+            session.add(sample)
+            session.commit()
 
     def insert_cloud_latency_sample(
         self,
@@ -204,40 +124,18 @@ class Database:
         room_id: Optional[UUID] = None,
     ) -> None:
         timestamp = ts or datetime.now(timezone.utc)
-        query = text(
-            """
-            insert into samples (
-                device_id,
-                room_id,
-                sample_type,
-                ts,
-                latency_eu_ms,
-                latency_us_ms,
-                latency_asia_ms
+        with Session(self.engine) as session:
+            sample = Sample(
+                device_id=str(device_id),
+                room_id=str(room_id) if room_id else None,
+                sample_type='cloud_latency',
+                ts=timestamp,
+                latency_eu_ms=latency_eu_ms,
+                latency_us_ms=latency_us_ms,
+                latency_asia_ms=latency_asia_ms
             )
-            values (
-                :device_id,
-                :room_id,
-                'cloud_latency',
-                :ts,
-                :latency_eu_ms,
-                :latency_us_ms,
-                :latency_asia_ms
-            )
-            """
-        )
-        with self.engine.begin() as conn:
-            conn.execute(
-                query,
-                {
-                    "device_id": device_id,
-                    "room_id": room_id,
-                    "ts": timestamp,
-                    "latency_eu_ms": latency_eu_ms,
-                    "latency_us_ms": latency_us_ms,
-                    "latency_asia_ms": latency_asia_ms,
-                },
-            )
+            session.add(sample)
+            session.commit()
 
     @staticmethod
     def _build_database_url(dsn: Optional[str]) -> str:
