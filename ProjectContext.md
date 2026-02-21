@@ -44,6 +44,7 @@ The project builds upon these specific weekly milestones:
 *   **What Works:** Data Collection is modularized (`agent/pc_data_collector/` and `agent/cloud_latency_collector/`), gathering local network metrics and 3rd-party globalping latency. An internal **Uploader Queue** (`agent/uploader_queue/queue.py`) buffers metrics and seamlessly transmits them to the cloud via HTTP POST. A basic Flask server is running with an **Aggregator API** (`POST /api/ingest`) that catches incoming JSON payloads and persists them to the Supabase PostgreSQL database using SQLAlchemy ORM sessions. Configuration (`settings.py`) and custom structured logging are properly set up.
 *   **Critical Flaws to Fix:** 
     *   No error handling on Flask startup (if the network drops, the app crashes).
+    *   The local PC agent's entrypoint currently runs a standalone test function with a hardcoded `device_id`. This needs to be switched to `run_with_user()` to dynamically register the actual computer and use a real database ID in production.
 *   **Missing Features:** The Reporting API, and Dashboard UI do not exist yet.
 
 ## 5. Immediate Development Priorities
