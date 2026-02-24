@@ -9,10 +9,10 @@ Requirements for VM migration milestone. Each maps to a roadmap phase.
 
 ### VM Setup
 
-- [ ] **SETUP-01**: VM has Python 3.10+ with venv and all project dependencies installed
-- [ ] **SETUP-02**: Project repository is cloned onto the VM
-- [ ] **SETUP-03**: `.env` file is configured on the VM with all required credentials and settings
-- [ ] **SETUP-04**: Gunicorn is installed in the project venv and manually verified to serve the app
+- [x] **SETUP-01**: VM has Python 3.10+ with venv and all project dependencies installed
+- [x] **SETUP-02**: Project repository is cloned onto the VM
+- [x] **SETUP-03**: `.env` file is configured on the VM with all required credentials and settings
+- [x] **SETUP-04**: Gunicorn is installed in the project venv and manually verified to serve the app
 
 ### Server
 
@@ -50,10 +50,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SETUP-01 | Phase 1 | Pending |
-| SETUP-02 | Phase 1 | Pending |
-| SETUP-03 | Phase 1 | Pending |
-| SETUP-04 | Phase 2 | Pending |
+| SETUP-01 | Phase 1 | Complete |
+| SETUP-02 | Phase 1 | Complete |
+| SETUP-03 | Phase 1 | Complete |
+| SETUP-04 | Phase 2 | Complete |
 | SRV-01 | Phase 2 | Pending |
 | HEALTH-01 | Phase 3 | Pending |
 | SRV-02 | Phase 4 | Pending |
