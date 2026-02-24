@@ -73,7 +73,7 @@ Each task was committed atomically:
 1. **Task 1: Install Gunicorn into venv and add to requirements.txt** - `3ab55fe` (feat)
 2. **Task 2: Open port 5000 in UFW** - no commit (VM configuration only; UFW inactive — no change made)
 
-**Plan metadata:** (docs commit to follow)
+**Plan metadata:** `0d808e6` (docs: complete plan)
 
 ## Files Created/Modified
 
