@@ -39,11 +39,15 @@ Plans:
 **Goal**: Gunicorn is installed in the project venv and serving the Flask app on `0.0.0.0:5000`, reachable from outside the VM
 **Depends on**: Phase 1
 **Requirements**: SETUP-04, SRV-01
-**Plans**: TBD
+**Plans**: 2 plans
 **Success Criteria** (what must be TRUE):
   1. `gunicorn` is present in the venv (`venv/bin/gunicorn --version` returns without error)
   2. Running `gunicorn --bind 0.0.0.0:5000 web_app.app:app` from the project root starts without import errors and shows worker boot messages
   3. `curl http://<VM_IP>:5000/api/ingest` from an agent machine (not from the VM itself) receives a response (even a 400 or 405 is proof of reachability)
+
+Plans:
+- [ ] 02-01-PLAN.md — Install Gunicorn into venv, add to requirements.txt, open UFW port 5000
+- [ ] 02-02-PLAN.md — Start Gunicorn in foreground and verify external reachability from an agent machine
 
 ### Phase 3: Health Endpoint
 **Goal**: The Flask app exposes a `GET /health` endpoint that returns a liveness response, reachable from outside the VM
