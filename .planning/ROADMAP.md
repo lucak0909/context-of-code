@@ -53,10 +53,13 @@ Plans:
 **Goal**: The Flask app exposes a `GET /health` endpoint that returns a liveness response, reachable from outside the VM
 **Depends on**: Phase 2
 **Requirements**: HEALTH-01
-**Plans**: TBD
+**Plans**: 1 plan
 **Success Criteria** (what must be TRUE):
   1. `curl http://<VM_IP>:5000/health` from an agent machine returns HTTP 200
   2. The response body is `{"status": "ok", "ts": "<utc-iso>"}` with a valid ISO 8601 timestamp
+
+Plans:
+- [ ] 03-01-PLAN.md — Implement the `/health` liveness probe endpoint on the Flask application and verify it is reachable externally
 
 ### Phase 4: Systemd Service
 **Goal**: The aggregator runs as a managed systemd service that starts on boot and restarts automatically on crash
@@ -89,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. VM Provisioning and Environment Setup | 2/2 | Complete | 2026-02-24 |
 | 2. Gunicorn Integration | 2/2 | Complete | 2026-02-24 |
-| 3. Health Endpoint | 0/TBD | Not started | - |
+| 3. Health Endpoint | 0/1 | Planned | - |
 | 4. Systemd Service | 0/TBD | Not started | - |
 | 5. Agent Cutover and End-to-End Verification | 0/TBD | Not started | - |
 
