@@ -16,7 +16,7 @@ Requirements for VM migration milestone. Each maps to a roadmap phase.
 
 ### Server
 
-- [ ] **SRV-01**: Flask aggregator runs under Gunicorn (not Flask dev server) bound to `0.0.0.0`
+- [x] **SRV-01**: Flask aggregator runs under Gunicorn (not Flask dev server) bound to `0.0.0.0`
 - [ ] **SRV-02**: Systemd service unit starts the aggregator on boot and restarts it on crash
 - [ ] **SRV-03**: Firewall (UFW) permits inbound traffic on the aggregator port
 
@@ -54,7 +54,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SETUP-02 | Phase 1 | Complete |
 | SETUP-03 | Phase 1 | Complete |
 | SETUP-04 | Phase 2 | Complete |
-| SRV-01 | Phase 2 | Pending |
+| SRV-01 | Phase 2 | Complete |
 | HEALTH-01 | Phase 3 | Pending |
 | SRV-02 | Phase 4 | Pending |
 | SRV-03 | Phase 4 | Pending |
@@ -68,4 +68,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24 — traceability updated after roadmap creation*
+*Last updated: 2026-02-24 — SRV-01 marked complete after Phase 2 Plan 02 external reachability confirmed*

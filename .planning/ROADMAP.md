@@ -12,8 +12,8 @@ Five sequential phases migrate the Flask aggregator from PythonAnywhere to a ded
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: VM Provisioning and Environment Setup** - Provision the VM with Python, project code, and credentials; confirm Supabase connectivity
-- [ ] **Phase 2: Gunicorn Integration** - Install Gunicorn and manually verify it serves the app on `0.0.0.0:5000`
+- [x] **Phase 1: VM Provisioning and Environment Setup** - Provision the VM with Python, project code, and credentials; confirm Supabase connectivity
+- [x] **Phase 2: Gunicorn Integration** - Install Gunicorn and manually verify it serves the app on `0.0.0.0:5000`
 - [ ] **Phase 3: Health Endpoint** - Add `GET /health` route and confirm it responds from an agent machine
 - [ ] **Phase 4: Systemd Service** - Install and enable the systemd unit; verify boot persistence and crash recovery
 - [ ] **Phase 5: Agent Cutover and End-to-End Verification** - Update agent URLs and confirm metrics reach Supabase
@@ -46,8 +46,8 @@ Plans:
   3. `curl http://<VM_IP>:5000/api/ingest` from an agent machine (not from the VM itself) receives a response (even a 400 or 405 is proof of reachability)
 
 Plans:
-- [ ] 02-01-PLAN.md — Install Gunicorn into venv, add to requirements.txt, open UFW port 5000
-- [ ] 02-02-PLAN.md — Start Gunicorn in foreground and verify external reachability from an agent machine
+- [x] 02-01-PLAN.md — Install Gunicorn into venv, add to requirements.txt, open UFW port 5000
+- [x] 02-02-PLAN.md — Start Gunicorn in foreground and verify external reachability from an agent machine
 
 ### Phase 3: Health Endpoint
 **Goal**: The Flask app exposes a `GET /health` endpoint that returns a liveness response, reachable from outside the VM
@@ -88,7 +88,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. VM Provisioning and Environment Setup | 2/2 | Complete | 2026-02-24 |
-| 2. Gunicorn Integration | 1/2 | In progress | - |
+| 2. Gunicorn Integration | 2/2 | Complete | 2026-02-24 |
 | 3. Health Endpoint | 0/TBD | Not started | - |
 | 4. Systemd Service | 0/TBD | Not started | - |
 | 5. Agent Cutover and End-to-End Verification | 0/TBD | Not started | - |
