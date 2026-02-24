@@ -55,9 +55,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SETUP-03 | Phase 1 | Pending |
 | SETUP-04 | Phase 2 | Pending |
 | SRV-01 | Phase 2 | Pending |
+| HEALTH-01 | Phase 3 | Pending |
 | SRV-02 | Phase 4 | Pending |
 | SRV-03 | Phase 4 | Pending |
-| HEALTH-01 | Phase 3 | Pending |
 | CUTOVER-01 | Phase 5 | Pending |
 | CUTOVER-02 | Phase 5 | Pending |
 
@@ -68,4 +68,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24 after initial definition*
+*Last updated: 2026-02-24 — traceability updated after roadmap creation*
