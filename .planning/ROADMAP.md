@@ -97,7 +97,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. VM Provisioning and Environment Setup | 2/2 | Complete | 2026-02-24 |
 | 2. Gunicorn Integration | 2/2 | Complete | 2026-02-24 |
 | 3. Health Endpoint | 1/1 | Complete | 2026-02-25 |
-| 4. Systemd Service | 0/TBD | Not started | - |
+| 4. Systemd Service | 0/2 | In Progress (Task 1 done; SSH lockout — needs console fix) | - |
 | 5. Agent Cutover and End-to-End Verification | 0/TBD | Not started | - |
 
 ---
