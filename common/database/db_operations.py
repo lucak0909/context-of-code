@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
-from .db_dataclasses import Device, Room, Sample, User
+from .db_dataclasses import Device, Sample, User
 from ..settings import get_settings
 from ..utils.logging_setup import setup_logger
 from ..auth.passwords import verify_password
@@ -146,14 +146,12 @@ class Database:
         test_method: Optional[str] = None,
         ip: Optional[str] = None,
         ts: Optional[datetime] = None,
-        room_id: Optional[UUID] = None,
     ) -> None:
         timestamp = ts or datetime.now(timezone.utc)
         query = text(
             """
             insert into samples (
                 device_id,
-                room_id,
                 sample_type,
                 ts,
                 latency_ms,
@@ -165,7 +163,6 @@ class Database:
             )
             values (
                 :device_id,
-                :room_id,
                 'desktop_network',
                 :ts,
                 :latency_ms,
@@ -182,7 +179,6 @@ class Database:
                 query,
                 {
                     "device_id": device_id,
-                    "room_id": room_id,
                     "ts": timestamp,
                     "latency_ms": latency_ms,
                     "packet_loss_pct": packet_loss_pct,
@@ -201,14 +197,12 @@ class Database:
         latency_us_ms: Optional[float],
         latency_asia_ms: Optional[float],
         ts: Optional[datetime] = None,
-        room_id: Optional[UUID] = None,
     ) -> None:
         timestamp = ts or datetime.now(timezone.utc)
         query = text(
             """
             insert into samples (
                 device_id,
-                room_id,
                 sample_type,
                 ts,
                 latency_eu_ms,
@@ -217,7 +211,6 @@ class Database:
             )
             values (
                 :device_id,
-                :room_id,
                 'cloud_latency',
                 :ts,
                 :latency_eu_ms,
@@ -231,7 +224,6 @@ class Database:
                 query,
                 {
                     "device_id": device_id,
-                    "room_id": room_id,
                     "ts": timestamp,
                     "latency_eu_ms": latency_eu_ms,
                     "latency_us_ms": latency_us_ms,
