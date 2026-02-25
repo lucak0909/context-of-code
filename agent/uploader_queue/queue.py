@@ -100,7 +100,6 @@ class UploadQueue:
                 test_method=payload.get("test_method"),
                 ip=payload.get("ip"),
                 ts=ts,
-                room_id=None,
             )
             return True
 
@@ -111,7 +110,6 @@ class UploadQueue:
                 latency_us_ms=_parse_optional_float(payload.get("latency_us_ms")),
                 latency_asia_ms=_parse_optional_float(payload.get("latency_asia_ms")),
                 ts=ts,
-                room_id=None,
             )
             return True
 
