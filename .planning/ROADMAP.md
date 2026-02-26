@@ -59,7 +59,7 @@ Plans:
   2. The response body is `{"status": "ok", "ts": "<utc-iso>"}` with a valid ISO 8601 timestamp
 
 Plans:
-- [x] 03-01-PLAN.md — Implement the `/health` liveness probe endpoint on the Flask application and verify it is reachable externally
+- [ ] 03-01-PLAN.md — Implement the `/health` liveness probe endpoint on the Flask application and verify it is reachable externally
 
 ### Phase 4: Systemd Service
 **Goal**: The aggregator runs as a managed systemd service that starts on boot and restarts automatically on crash
