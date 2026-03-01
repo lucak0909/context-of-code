@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
-from .db_dataclasses import Device, Room, Sample, User, Password
+from .db_dataclasses import Device, Sample, User, Password
 from ..settings import get_settings
 from ..utils.logging_setup import setup_logger
 from ..auth.passwords import verify_password
@@ -94,13 +94,11 @@ class Database:
         test_method: Optional[str] = None,
         ip: Optional[str] = None,
         ts: Optional[datetime] = None,
-        room_id: Optional[UUID] = None,
     ) -> None:
         timestamp = ts or datetime.now(timezone.utc)
         with Session(self.engine) as session:
             sample = Sample(
                 device_id=str(device_id),
-                room_id=str(room_id) if room_id else None,
                 sample_type='desktop_network',
                 ts=timestamp,
                 latency_ms=latency_ms,
@@ -121,13 +119,11 @@ class Database:
         latency_us_ms: Optional[float],
         latency_asia_ms: Optional[float],
         ts: Optional[datetime] = None,
-        room_id: Optional[UUID] = None,
     ) -> None:
         timestamp = ts or datetime.now(timezone.utc)
         with Session(self.engine) as session:
             sample = Sample(
                 device_id=str(device_id),
-                room_id=str(room_id) if room_id else None,
                 sample_type='cloud_latency',
                 ts=timestamp,
                 latency_eu_ms=latency_eu_ms,

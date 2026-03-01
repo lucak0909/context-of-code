@@ -2,7 +2,6 @@ create table samples (
     id bigserial primary key,
 
     device_id uuid not null references devices(id) on delete cascade,
-    room_id uuid references rooms(id) on delete set null,
 
     sample_type text not null 
         check (sample_type in ('mobile_wifi', 'desktop_network', 'cloud_latency')),

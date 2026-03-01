@@ -33,21 +33,11 @@ class Device(Base):
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
 
-class Room(Base):
-    __tablename__ = 'rooms'
-
-    id = Column(String, primary_key=True, server_default=text("gen_random_uuid()"))
-    user_id = Column(String, nullable=False)
-    name = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
-
-
 class Sample(Base):
     __tablename__ = 'samples'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     device_id = Column(String, ForeignKey('devices.id', ondelete="CASCADE"), nullable=False)
-    room_id = Column(String, ForeignKey('rooms.id', ondelete="SET NULL"))
     sample_type = Column(String, nullable=False)
     ts = Column(DateTime(timezone=True), nullable=False)
 
