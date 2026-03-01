@@ -40,19 +40,28 @@ The project builds upon these specific weekly milestones:
 *   **Day 4 (Networks/Data):** Command-line arguments (`argparse`), DNS/Ping/Ports, and Database schema normalization (1:1, 1:N, N:M).
 *   **Day 5 (SQL/ORM):** SQL indexing, transactions, connecting to the database, and mapping tables to Python classes using SQLAlchemy ORM (`sqlacodegen`).
 
-## 4. Current Project Status (~65% Complete)
-*   **What Works:** Data Collection is modularized (`agent/pc_data_collector/` and `agent/cloud_latency_collector/`), gathering local network metrics and 3rd-party globalping latency. An internal **Uploader Queue** (`agent/uploader_queue/queue.py`) buffers metrics and seamlessly transmits them to the cloud via HTTP POST. A basic Flask server is running with an **Aggregator API** (`POST /api/ingest`) that catches incoming JSON payloads and persists them to the Supabase PostgreSQL database using SQLAlchemy ORM sessions. Configuration (`settings.py`) and custom structured logging are properly set up.
-*   **Critical Flaws to Fix:** 
+## 4. Current Project Status (~85% Complete)
+*   **What Works:**
+    *   Data collection is fully modularised (`agent/pc_data_collector/` and `agent/cloud_latency_collector/`), gathering local network metrics and 3rd-party Globalping cloud latency.
+    *   An internal **Uploader Queue** (`agent/uploader_queue/queue.py`) buffers metrics offline and transmits them via HTTP POST to the aggregator.
+    *   The Flask web app is deployed on a college-provisioned VM (Ubuntu), running under **Gunicorn** (5 workers, port 5017) managed by a **systemd** service that auto-restarts on failure.
+    *   The **Aggregator API** (`POST /api/ingest`) is live and externally reachable at `http://200.69.13.70:5017/api/ingest`. It receives JSON payloads from agents and persists them to Supabase PostgreSQL using **SQLAlchemy ORM** sessions.
+    *   A **health endpoint** (`GET /health`) exists at `http://200.69.13.70:5017/health` for uptime verification.
+    *   The database schema uses a normalised `samples` table (no `rooms` table — removed). ORM models (`Sample`, `Device`, `User`, `Password`) are defined in `common/database/db_dataclasses.py`.
+    *   End-to-end pipeline verified: agent runs → data POSTed to VM → rows confirmed in Supabase.
+    *   Configuration (`settings.py`, `.env`) and structured logging are properly set up throughout.
+*   **Critical Flaws to Fix:**
     *   No error handling on Flask startup (if the network drops, the app crashes).
-    *   The local PC agent's entrypoint currently runs a standalone test function with a hardcoded `device_id`. This needs to be switched to `run_with_user()` to dynamically register the actual computer and use a real database ID in production.
-*   **Missing Features:** The Reporting API, and Dashboard UI do not exist yet.
+    *   The local PC agent's entrypoint currently defaults to `run()` (a test function with a hardcoded `device_id`). Production use requires switching the default to `run_with_user()` to dynamically register the device and use a real database ID.
+*   **Missing Features:** The Reporting API and Dashboard UI do not exist yet.
 
 ## 5. Immediate Development Priorities
 When assisting with code generation, prioritize these tasks in order:
-1.  **Build Reporting API:** Create the Flask endpoints required to fetch historical metric data from the database for the UI.
+1.  **Build Reporting API:** Create Flask endpoints to fetch historical metric data from the database, broken down by `sample_type` (`desktop_network`, `cloud_latency`).
 2.  **Build Dashboard UI:** Create the web interface to query the Reporting API and display live and historical metric graphs to the end-user.
-3.  **Add Flask Startup Error Handling:** Ensure the Flask app doesn't crash on startup if the network or database is temporarily unavailable.
-4.  **Device Commands (Stretch Goal):** Implement bidirectional communication allowing the server to dynamically change the PC agent's polling interval.
+3.  **Switch agent default to `run_with_user()`:** Update `agent/__main__.py` so that the production entry point prompts for user login and registers the device dynamically instead of using a hardcoded test ID.
+4.  **Add Flask Startup Error Handling:** Ensure the Flask app doesn't crash on startup if the network or database is temporarily unavailable.
+5.  **Device Commands (Stretch Goal):** Implement bidirectional communication allowing the server to dynamically change the PC agent's polling interval.
 
 ## 6. Assessment Constraints
 *   **Format:** 70% of the module grade. Examined via a strict 20-minute team interview.
