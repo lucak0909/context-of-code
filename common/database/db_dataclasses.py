@@ -1,41 +1,62 @@
-from dataclasses import dataclass
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, text
+from sqlalchemy.orm import declarative_base
 from datetime import datetime
 from uuid import UUID
-from typing import Optional
+
+Base = declarative_base()
 
 
-@dataclass
-class User:
-    id: UUID
-    email: str
-    created_at: datetime
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(String, primary_key=True, server_default=text("gen_random_uuid()"))
+    email = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
 
-@dataclass
-class Device:
-    id: UUID
-    user_id: UUID
-    name: str
-    device_type: str
-    created_at: datetime
+class Password(Base):
+    __tablename__ = 'passwords'
+
+    id = Column(String, primary_key=True, server_default=text("gen_random_uuid()"))
+    user_id = Column(String, ForeignKey('users.id', ondelete="CASCADE"), nullable=False, unique=True)
+    password_enc = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
 
-@dataclass
-class Sample:
-    id: int
-    device_id: UUID
-    sample_type: str
-    ts: datetime
-    wifi_rssi_dbm: Optional[float]
-    link_speed_mbps: Optional[float]
-    is_connected: Optional[bool]
-    latency_ms: Optional[float]
-    packet_loss_pct: Optional[float]
-    down_mbps: Optional[float]
-    up_mbps: Optional[float]
-    ip: Optional[str]
-    latency_eu_ms: Optional[float]
-    latency_us_ms: Optional[float]
-    latency_asia_ms: Optional[float]
-    created_at: Optional[datetime]
-    test_method: Optional[str]
+class Device(Base):
+    __tablename__ = 'devices'
+
+    id = Column(String, primary_key=True, server_default=text("gen_random_uuid()"))
+    user_id = Column(String, ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
+    device_type = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+
+class Sample(Base):
+    __tablename__ = 'samples'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    device_id = Column(String, ForeignKey('devices.id', ondelete="CASCADE"), nullable=False)
+    sample_type = Column(String, nullable=False)
+    ts = Column(DateTime(timezone=True), nullable=False)
+
+    # Mobile WiFi metrics
+    wifi_rssi_dbm = Column(Float)
+    link_speed_mbps = Column(Float)
+    is_connected = Column(Boolean)
+
+    # Desktop network metrics
+    latency_ms = Column(Float)
+    packet_loss_pct = Column(Float)
+    down_mbps = Column(Float)
+    up_mbps = Column(Float)
+    test_method = Column(String)
+    ip = Column(String)
+
+    # Cloud latency metrics
+    latency_eu_ms = Column(Float)
+    latency_us_ms = Column(Float)
+    latency_asia_ms = Column(Float)
+
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))

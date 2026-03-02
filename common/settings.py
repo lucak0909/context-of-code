@@ -22,6 +22,9 @@ DB_REQUIRED_ENV_VARS = (
     DB_ENV_NAME,
 )
 
+ENV_AGGREGATOR_API_URL = "AGGREGATOR_API_URL"
+DEFAULT_API_URL = "http://127.0.0.1:5000/api/ingest"
+
 DEFAULT_LOGS_DIR = "logs"
 DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
@@ -77,6 +80,7 @@ class Settings:
     db_host: str
     db_port: int
     db_name: str
+    aggregator_api_url: str
 
 
 @lru_cache(maxsize=1)
@@ -96,6 +100,7 @@ def get_settings() -> Settings:
         db_host=_require_env(DB_ENV_HOST),
         db_port=int(_require_env(DB_ENV_PORT)),
         db_name=_require_env(DB_ENV_NAME),
+        aggregator_api_url=os.getenv(ENV_AGGREGATOR_API_URL, DEFAULT_API_URL),
     )
 
 
