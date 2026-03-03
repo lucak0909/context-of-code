@@ -1,0 +1,112 @@
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, sans-serif;
+  background: #0f172a;
+  color: #f1f5f9;
+  min-height: 100vh;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.app-title { font-size: 1.25rem; font-weight: 700; color: #f8fafc; }
+
+.main { padding: 24px; display: flex; flex-direction: column; gap: 36px; }
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+}
+
+/* ── Metric cards ─────────────────────────────────────────────────────────── */
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.metric-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+.metric-value { font-size: 1.75rem; font-weight: 700; color: #f8fafc; }
+.metric-unit  { font-size: 0.875rem; color: #94a3b8; }
+.metric-label { font-size: 0.75rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ── Charts ───────────────────────────────────────────────────────────────── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.chart-box {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.chart-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+/* ── Status badge ─────────────────────────────────────────────────────────── */
+.status-badge { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #94a3b8; }
+.status-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+.device-select {
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #f1f5f9;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.refresh-btn {
+  background: #334155;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #f1f5f9;
+  padding: 6px 14px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.refresh-btn:hover:not(:disabled) { background: #475569; }
+.refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Utility ──────────────────────────────────────────────────────────────── */
+.muted         { color: #64748b; font-size: 0.8rem; }
+.last-updated  { font-size: 0.75rem; }
+.error-banner  { background: #7f1d1d; color: #fca5a5; padding: 10px 24px; font-size: 0.875rem; }

@@ -208,6 +208,10 @@ __marimo__/
 
 .DS_Store
 
+# React / Node
+frontend/node_modules/
+frontend/dist/
+
 agent_queue.jsonl
 zTJLocalFiles/
 .planning/
