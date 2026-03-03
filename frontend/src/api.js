@@ -43,4 +43,3 @@ export const login = (email, password) =>
 export const register = (email, password) =>
   post('/api/auth/register', { email, password })
 
-export const getAdmin = () => get('/api/admin')

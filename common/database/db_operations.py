@@ -2,7 +2,7 @@ from urllib.parse import quote_plus
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
-from sqlalchemy import create_engine, select, func
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 from .db_dataclasses import Device, Sample, User, Password
@@ -184,29 +184,6 @@ class Database:
             ).all()
             session.expunge_all()
             return list(devices)
-
-    def get_db_stats(self) -> dict:
-        """Return aggregate counts for the admin view."""
-        with Session(self.engine) as session:
-            total_users = session.scalar(select(func.count()).select_from(User))
-            total_devices = session.scalar(select(func.count()).select_from(Device))
-            total_samples = session.scalar(select(func.count()).select_from(Sample))
-            latest_ts = session.scalar(select(func.max(Sample.ts)))
-
-            # Count per sample_type
-            rows = session.execute(
-                select(Sample.sample_type, func.count())
-                .group_by(Sample.sample_type)
-            ).all()
-            by_type = {row[0]: row[1] for row in rows}
-
-        return {
-            "total_users": total_users or 0,
-            "total_devices": total_devices or 0,
-            "total_samples": total_samples or 0,
-            "samples_by_type": by_type,
-            "latest_sample_ts": latest_ts.isoformat() if latest_ts else None,
-        }
 
     @staticmethod
     def _build_database_url(dsn: Optional[str]) -> str:
