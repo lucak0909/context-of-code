@@ -1,6 +1,6 @@
 from urllib.parse import quote_plus
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from uuid import UUID
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -132,6 +132,47 @@ class Database:
             )
             session.add(sample)
             session.commit()
+
+    def get_all_devices(self) -> list:
+        """Return all devices ordered by creation date ascending."""
+        with Session(self.engine) as session:
+            devices = session.scalars(select(Device).order_by(Device.created_at.asc())).all()
+            session.expunge_all()
+            return list(devices)
+
+    def get_samples(
+        self,
+        device_id: str,
+        sample_type: Optional[str] = None,
+        hours: int = 24,
+        limit: int = 200,
+    ) -> list:
+        """Return samples for a device within the last *hours*, oldest first."""
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        with Session(self.engine) as session:
+            q = (
+                select(Sample)
+                .where(Sample.device_id == device_id, Sample.ts >= cutoff)
+            )
+            if sample_type:
+                q = q.where(Sample.sample_type == sample_type)
+            q = q.order_by(Sample.ts.asc()).limit(limit)
+            samples = session.scalars(q).all()
+            session.expunge_all()
+            return list(samples)
+
+    def get_latest_sample(self, device_id: str, sample_type: str) -> Optional[object]:
+        """Return the single most-recent sample for a device and sample_type."""
+        with Session(self.engine) as session:
+            sample = session.scalars(
+                select(Sample)
+                .where(Sample.device_id == device_id, Sample.sample_type == sample_type)
+                .order_by(Sample.ts.desc())
+                .limit(1)
+            ).first()
+            if sample:
+                session.expunge(sample)
+            return sample
 
     @staticmethod
     def _build_database_url(dsn: Optional[str]) -> str:
