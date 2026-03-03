@@ -106,7 +106,171 @@ body {
 .refresh-btn:hover:not(:disabled) { background: #475569; }
 .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.logout-btn {
+  background: transparent;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #94a3b8;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.logout-btn:hover { border-color: #f87171; color: #f87171; }
+
 /* ── Utility ──────────────────────────────────────────────────────────────── */
 .muted         { color: #64748b; font-size: 0.8rem; }
 .last-updated  { font-size: 0.75rem; }
 .error-banner  { background: #7f1d1d; color: #fca5a5; padding: 10px 24px; font-size: 0.875rem; }
+
+/* ── Auth screen ──────────────────────────────────────────────────────────── */
+.auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.auth-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f8fafc;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 24px;
+}
+
+.auth-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  padding: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.auth-tab.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+.auth-tab:hover:not(.active) { color: #94a3b8; }
+
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+
+.auth-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.auth-input {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f1f5f9;
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  outline: none;
+}
+.auth-input:focus { border-color: #38bdf8; }
+
+.auth-error {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.auth-submit {
+  background: #0284c7;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  padding: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.auth-submit:hover:not(:disabled) { background: #0369a1; }
+.auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Admin page ───────────────────────────────────────────────────────────── */
+.admin-page { display: flex; flex-direction: column; min-height: 100vh; }
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.admin-title { font-size: 1.25rem; font-weight: 700; color: #f8fafc; flex: 1; }
+
+.admin-main { padding: 24px; display: flex; flex-direction: column; gap: 32px; }
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.admin-stat-value-sm {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.admin-section { display: flex; flex-direction: column; gap: 12px; }
+
+.admin-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 480px;
+  font-size: 0.9rem;
+}
+.admin-table th, .admin-table td {
+  text-align: left;
+  padding: 8px 16px;
+  border-bottom: 1px solid #334155;
+}
+.admin-table th { color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+.admin-table td { color: #f1f5f9; }
+.admin-table tr:last-child td { border-bottom: none; }
+
+.admin-sub-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #334155;
+  border-radius: 8px;
+}
+.admin-table-wrap .admin-table { max-width: none; }
+.admin-table-wrap .admin-table th,
+.admin-table-wrap .admin-table td { white-space: nowrap; }

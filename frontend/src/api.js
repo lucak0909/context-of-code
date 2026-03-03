@@ -10,9 +10,23 @@ async function get(path) {
   return res.json()
 }
 
+async function post(path, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json()
+  if (!res.ok) throw Object.assign(new Error(data.error ?? `POST ${path} returned ${res.status}`), { status: res.status, data })
+  return data
+}
+
 export const getHealth = () => get('/health')
 
-export const getDevices = () => get('/api/report/devices')
+export const getDevices = (userId) => {
+  const params = userId ? `?user_id=${userId}` : ''
+  return get(`/api/report/devices${params}`)
+}
 
 export const getSamples = (deviceId, sampleType, hours = 24) => {
   const params = new URLSearchParams({ device_id: deviceId, hours })
@@ -22,3 +36,11 @@ export const getSamples = (deviceId, sampleType, hours = 24) => {
 
 export const getLatest = (deviceId) =>
   get(`/api/report/latest?device_id=${deviceId}`)
+
+export const login = (email, password) =>
+  post('/api/auth/login', { email, password })
+
+export const register = (email, password) =>
+  post('/api/auth/register', { email, password })
+
+export const getAdmin = () => get('/api/admin')

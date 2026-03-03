@@ -1,13 +1,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getDevices, getSamples, getLatest } from './api'
+import AuthScreen from './components/AuthScreen'
 import StatusBadge from './components/StatusBadge'
 import DeviceSelector from './components/DeviceSelector'
 import MetricCard from './components/MetricCard'
 import NetworkChart from './components/NetworkChart'
 
 const POLL_INTERVAL_MS = 60_000 // refresh data every 60 seconds
+const SESSION_KEY = 'nm_user'
+
+function loadUser() {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY))
+  } catch {
+    return null
+  }
+}
 
 export default function App() {
+  const [user, setUser] = useState(loadUser)
+
   const [devices, setDevices] = useState([])
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [networkSamples, setNetworkSamples] = useState([])
@@ -17,17 +29,32 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Load device list once on mount
+  function handleAuth(userData) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(userData))
+    setUser(userData)
+  }
+
+  function handleLogout() {
+    localStorage.removeItem(SESSION_KEY)
+    setUser(null)
+    setDevices([])
+    setSelectedDevice(null)
+    setNetworkSamples([])
+    setCloudSamples([])
+    setLatest({})
+  }
+
+  // Load device list when user changes
   useEffect(() => {
-    getDevices()
+    if (!user) return
+    getDevices(user.user_id)
       .then((data) => {
         setDevices(data)
         if (data.length > 0) setSelectedDevice(data[0].id)
       })
       .catch(() => setError('Could not load devices. Is the API reachable?'))
-  }, [])
+  }, [user])
 
-  // Fetch samples + latest whenever the selected device changes, then poll
   const refresh = useCallback(() => {
     if (!selectedDevice) return
     setLoading(true)
@@ -52,6 +79,10 @@ export default function App() {
     const id = setInterval(refresh, POLL_INTERVAL_MS)
     return () => clearInterval(id)
   }, [refresh])
+
+  if (!user) {
+    return <AuthScreen onAuth={handleAuth} />
+  }
 
   const net = latest.desktop_network ?? {}
   const cloud = latest.cloud_latency ?? {}
@@ -78,6 +109,8 @@ export default function App() {
           <button className="refresh-btn" onClick={refresh} disabled={loading}>
             {loading ? 'Loading…' : 'Refresh'}
           </button>
+          <span className="muted">{user.email}</span>
+          <button className="logout-btn" onClick={handleLogout}>Logout</button>
         </div>
       </header>
 

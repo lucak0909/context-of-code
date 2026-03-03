@@ -72,14 +72,18 @@ def _sample_to_dict(sample) -> dict:
 
 @reporting_bp.route("/devices", methods=["GET"])
 def devices():
-    """Return a list of all registered devices."""
+    """Return devices. If user_id is provided, only that user's devices are returned."""
+    user_id = request.args.get("user_id")
     try:
-        all_devices = _get_db().get_all_devices()
+        if user_id:
+            device_list = _get_db().get_devices_by_user(user_id)
+        else:
+            device_list = _get_db().get_all_devices()
     except Exception as exc:
         logger.error("Failed to fetch devices: %s", exc, exc_info=True)
         return jsonify({"error": "Could not retrieve devices."}), 500
 
-    return jsonify([_device_to_dict(d) for d in all_devices]), 200
+    return jsonify([_device_to_dict(d) for d in device_list]), 200
 
 
 # ── GET /api/report/samples ───────────────────────────────────────────────────
