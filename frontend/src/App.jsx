@@ -7,7 +7,13 @@ import MetricCard from './components/MetricCard'
 import NetworkChart from './components/NetworkChart'
 
 const POLL_INTERVAL_MS = 60_000 // refresh data every 60 seconds
+const STALE_THRESHOLD_MS = 15.1 * 60 * 1000 // 15.1 minutes in ms
 const SESSION_KEY = 'nm_user'
+
+function isStale(ts) {
+  if (!ts) return true
+  return Date.now() - new Date(ts).getTime() > STALE_THRESHOLD_MS
+}
 
 function loadUser() {
   try {
@@ -59,8 +65,8 @@ export default function App() {
     if (!selectedDevice) return
     setLoading(true)
     Promise.all([
-      getSamples(selectedDevice, 'desktop_network', 24),
-      getSamples(selectedDevice, 'cloud_latency', 24),
+      getSamples(selectedDevice, 'desktop_network', 1),
+      getSamples(selectedDevice, 'cloud_latency', 1),
       getLatest(selectedDevice),
     ])
       .then(([net, cloud, lat]) => {
@@ -86,6 +92,12 @@ export default function App() {
 
   const net = latest.desktop_network ?? {}
   const cloud = latest.cloud_latency ?? {}
+
+  const netStale = isStale(net.ts)
+  const cloudStale = isStale(cloud.ts)
+  const cutoffMs = Date.now() - STALE_THRESHOLD_MS
+  const freshNetworkSamples = networkSamples.filter(s => s.ts && new Date(s.ts).getTime() > cutoffMs)
+  const freshCloudSamples = cloudSamples.filter(s => s.ts && new Date(s.ts).getTime() > cutoffMs)
 
   return (
     <div className="app">
@@ -115,41 +127,46 @@ export default function App() {
       </header>
 
       {error && <div className="error-banner">{error}</div>}
+      {!error && (netStale || cloudStale) && (
+        <div className="error-banner">
+          No recent data — last sample is more than 15 minutes old. Is the agent running?
+        </div>
+      )}
 
       <main className="main">
         {/* ── Desktop Network Section ── */}
         <section>
-          <h2 className="section-title">Desktop Network (last 24 h)</h2>
+          <h2 className="section-title">Desktop Network (last 15 min)</h2>
 
           <div className="metric-row">
-            <MetricCard label="Latency" value={net.latency_ms} unit="ms" />
-            <MetricCard label="Packet Loss" value={net.packet_loss_pct} unit="%" />
-            <MetricCard label="Download" value={net.down_mbps} unit="Mbps" />
-            <MetricCard label="Upload" value={net.up_mbps} unit="Mbps" />
+            <MetricCard label="Latency" value={netStale ? null : net.latency_ms} unit="ms" />
+            <MetricCard label="Packet Loss" value={netStale ? null : net.packet_loss_pct} unit="%" />
+            <MetricCard label="Download" value={netStale ? null : net.down_mbps} unit="Mbps" />
+            <MetricCard label="Upload" value={netStale ? null : net.up_mbps} unit="Mbps" />
           </div>
 
           <div className="chart-grid">
             <NetworkChart
               title="Latency"
-              data={networkSamples}
+              data={freshNetworkSamples}
               lines={[{ key: 'latency_ms', color: '#38bdf8', name: 'Latency' }]}
               unit=" ms"
             />
             <NetworkChart
               title="Packet Loss"
-              data={networkSamples}
+              data={freshNetworkSamples}
               lines={[{ key: 'packet_loss_pct', color: '#f87171', name: 'Packet Loss' }]}
               unit="%"
             />
             <NetworkChart
               title="Download Speed"
-              data={networkSamples}
+              data={freshNetworkSamples}
               lines={[{ key: 'down_mbps', color: '#4ade80', name: 'Download' }]}
               unit=" Mbps"
             />
             <NetworkChart
               title="Upload Speed"
-              data={networkSamples}
+              data={freshNetworkSamples}
               lines={[{ key: 'up_mbps', color: '#fb923c', name: 'Upload' }]}
               unit=" Mbps"
             />
@@ -158,17 +175,17 @@ export default function App() {
 
         {/* ── Cloud Latency Section ── */}
         <section>
-          <h2 className="section-title">Cloud Latency (last 24 h)</h2>
+          <h2 className="section-title">Cloud Latency (last 15 min)</h2>
 
           <div className="metric-row">
-            <MetricCard label="EU Latency" value={cloud.latency_eu_ms} unit="ms" />
-            <MetricCard label="US Latency" value={cloud.latency_us_ms} unit="ms" />
-            <MetricCard label="Asia Latency" value={cloud.latency_asia_ms} unit="ms" />
+            <MetricCard label="EU Latency" value={cloudStale ? null : cloud.latency_eu_ms} unit="ms" />
+            <MetricCard label="US Latency" value={cloudStale ? null : cloud.latency_us_ms} unit="ms" />
+            <MetricCard label="Asia Latency" value={cloudStale ? null : cloud.latency_asia_ms} unit="ms" />
           </div>
 
           <NetworkChart
             title="Global Cloud Latency"
-            data={cloudSamples}
+            data={freshCloudSamples}
             lines={[
               { key: 'latency_eu_ms', color: '#a78bfa', name: 'EU' },
               { key: 'latency_us_ms', color: '#34d399', name: 'US' },

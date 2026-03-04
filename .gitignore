@@ -214,6 +214,9 @@ __marimo__/
 frontend/node_modules/
 frontend/dist/
 
+# Claude Code — personal/local settings should not be shared
+.claude/settings.local.json
+
 agent_queue.jsonl
 zTJLocalFiles/
 .planning/
