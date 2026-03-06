@@ -127,6 +127,25 @@ logger.error("This is an error message")
 logger.critical("This is a critical message")
 ```
 
+## Running Frontend locally
+Step 1:
+Install dependencies using:
+`pip install -r requirements.txt`
+in the project root
+
+Step 2:
+For the React frontend:
+`cd frontend`
+`npm install`
+
+Step 3:
+Run both servers in 2 terminals:
+Terminal 1 -> Flask (from the project root)
+`python -m web_app.app`
+
+Terminal 2 -> Vite dev server (from /frontend)
+`npm run dev`
+
 **Features:**
 - Logs are written to `common/logs/` by default (override with `LOGS_DIR` or `logs_dir`).
 - Log files are named `{HIGHEST_LEVEL}_{timestamp}.log` based on the highest severity logged.
