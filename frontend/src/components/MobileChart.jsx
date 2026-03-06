@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'recharts'
 
-// MobileChart: displays WiFi RSSI (dBm) and link speed (Mbps) for mobile_wifi samples.
+// MobileChart: displays WiFi RSSI (dBm) and link speed (Mbps) for mobile_wifi samples.        *NOTE FROM TJ: This is a placeholder for mobile data info*
 // Renders an empty-state message when no data is available — this is expected before
 // any mobile agent has submitted data (Phase 8), so it must not crash or show an error.
 export default function MobileChart({ title, data }) {
