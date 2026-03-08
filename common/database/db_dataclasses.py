@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, text
+from sqlalchemy import Column, Integer, BigInteger, String, Float, Boolean, DateTime, ForeignKey, text
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
 from uuid import UUID
@@ -56,8 +56,8 @@ class Sample(Base):
 
     # New TCP/bytes metrics (nullable — old rows will have NULL)
     tcp_connections = Column(Integer, nullable=True)
-    bytes_sent = Column(Integer, nullable=True)
-    bytes_recv = Column(Integer, nullable=True)
+    bytes_sent = Column(BigInteger, nullable=True)
+    bytes_recv = Column(BigInteger, nullable=True)
 
     # Cloud latency metrics
     latency_eu_ms = Column(Float)
