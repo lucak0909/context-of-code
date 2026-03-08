@@ -54,6 +54,11 @@ class Sample(Base):
     test_method = Column(String)
     ip = Column(String)
 
+    # New TCP/bytes metrics (nullable — old rows will have NULL)
+    tcp_connections = Column(Integer, nullable=True)
+    bytes_sent = Column(Integer, nullable=True)
+    bytes_recv = Column(Integer, nullable=True)
+
     # Cloud latency metrics
     latency_eu_ms = Column(Float)
     latency_us_ms = Column(Float)
