@@ -5,10 +5,18 @@ import StatusBadge from './components/StatusBadge'
 import DeviceSelector from './components/DeviceSelector'
 import MetricCard from './components/MetricCard'
 import NetworkChart from './components/NetworkChart'
+import MobileChart from './components/MobileChart'
 
 const POLL_INTERVAL_MS = 60_000 // refresh data every 60 seconds
 const STALE_THRESHOLD_MS = 15.1 * 60 * 1000 // 15.1 minutes in ms
 const SESSION_KEY = 'nm_user'
+
+const TIME_RANGES = [
+  { label: '1h',  hours: 1   },
+  { label: '6h',  hours: 6   },
+  { label: '24h', hours: 24  },
+  { label: '7d',  hours: 168 },
+]
 
 function isStale(ts) {
   if (!ts) return true
@@ -25,11 +33,13 @@ function loadUser() {
 
 export default function App() {
   const [user, setUser] = useState(loadUser)
+  const [hours, setHours] = useState(1)
 
   const [devices, setDevices] = useState([])
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [networkSamples, setNetworkSamples] = useState([])
   const [cloudSamples, setCloudSamples] = useState([])
+  const [mobileSamples, setMobileSamples] = useState([])
   const [latest, setLatest] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -47,6 +57,7 @@ export default function App() {
     setSelectedDevice(null)
     setNetworkSamples([])
     setCloudSamples([])
+    setMobileSamples([])
     setLatest({})
   }
 
@@ -65,20 +76,22 @@ export default function App() {
     if (!selectedDevice) return
     setLoading(true)
     Promise.all([
-      getSamples(selectedDevice, 'desktop_network', 1),
-      getSamples(selectedDevice, 'cloud_latency', 1),
+      getSamples(selectedDevice, 'desktop_network', hours),
+      getSamples(selectedDevice, 'cloud_latency', hours),
+      getSamples(selectedDevice, 'mobile_wifi', hours),
       getLatest(selectedDevice),
     ])
-      .then(([net, cloud, lat]) => {
+      .then(([net, cloud, mobile, lat]) => {
         setNetworkSamples(net)
         setCloudSamples(cloud)
+        setMobileSamples(mobile)
         setLatest(lat)
         setLastUpdated(new Date())
         setError(null)
       })
       .catch(() => setError('Failed to fetch metrics.'))
       .finally(() => setLoading(false))
-  }, [selectedDevice])
+  }, [selectedDevice, hours])
 
   useEffect(() => {
     refresh()
@@ -95,9 +108,7 @@ export default function App() {
 
   const netStale = isStale(net.ts)
   const cloudStale = isStale(cloud.ts)
-  const cutoffMs = Date.now() - STALE_THRESHOLD_MS
-  const freshNetworkSamples = networkSamples.filter(s => s.ts && new Date(s.ts).getTime() > cutoffMs)
-  const freshCloudSamples = cloudSamples.filter(s => s.ts && new Date(s.ts).getTime() > cutoffMs)
+  const activeRange = TIME_RANGES.find(r => r.hours === hours)?.label ?? '1h'
 
   return (
     <div className="app">
@@ -113,6 +124,17 @@ export default function App() {
             selected={selectedDevice}
             onChange={setSelectedDevice}
           />
+          <div className="time-range-selector">
+            {TIME_RANGES.map(({ label, hours: h }) => (
+              <button
+                key={label}
+                className={`range-btn${hours === h ? ' active' : ''}`}
+                onClick={() => setHours(h)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {lastUpdated && (
             <span className="muted last-updated">
               Updated {lastUpdated.toLocaleTimeString()}
@@ -136,7 +158,7 @@ export default function App() {
       <main className="main">
         {/* ── Desktop Network Section ── */}
         <section>
-          <h2 className="section-title">Desktop Network (last 15 min)</h2>
+          <h2 className="section-title">Desktop Network (last {activeRange})</h2>
 
           <div className="metric-row">
             <MetricCard label="Latency" value={netStale ? null : net.latency_ms} unit="ms" />
@@ -148,25 +170,25 @@ export default function App() {
           <div className="chart-grid">
             <NetworkChart
               title="Latency"
-              data={freshNetworkSamples}
+              data={networkSamples}
               lines={[{ key: 'latency_ms', color: '#38bdf8', name: 'Latency' }]}
               unit=" ms"
             />
             <NetworkChart
               title="Packet Loss"
-              data={freshNetworkSamples}
+              data={networkSamples}
               lines={[{ key: 'packet_loss_pct', color: '#f87171', name: 'Packet Loss' }]}
               unit="%"
             />
             <NetworkChart
               title="Download Speed"
-              data={freshNetworkSamples}
+              data={networkSamples}
               lines={[{ key: 'down_mbps', color: '#4ade80', name: 'Download' }]}
               unit=" Mbps"
             />
             <NetworkChart
               title="Upload Speed"
-              data={freshNetworkSamples}
+              data={networkSamples}
               lines={[{ key: 'up_mbps', color: '#fb923c', name: 'Upload' }]}
               unit=" Mbps"
             />
@@ -175,7 +197,7 @@ export default function App() {
 
         {/* ── Cloud Latency Section ── */}
         <section>
-          <h2 className="section-title">Cloud Latency (last 15 min)</h2>
+          <h2 className="section-title">Cloud Latency (last {activeRange})</h2>
 
           <div className="metric-row">
             <MetricCard label="EU Latency" value={cloudStale ? null : cloud.latency_eu_ms} unit="ms" />
@@ -185,13 +207,22 @@ export default function App() {
 
           <NetworkChart
             title="Global Cloud Latency"
-            data={freshCloudSamples}
+            data={cloudSamples}
             lines={[
               { key: 'latency_eu_ms', color: '#a78bfa', name: 'EU' },
               { key: 'latency_us_ms', color: '#34d399', name: 'US' },
               { key: 'latency_asia_ms', color: '#fbbf24', name: 'Asia' },
             ]}
             unit=" ms"
+          />
+        </section>
+
+        {/* ── Mobile WiFi Section ── */}
+        <section>
+          <h2 className="section-title">Mobile WiFi (last {activeRange})</h2>
+          <MobileChart
+            title="WiFi RSSI & Link Speed"
+            data={mobileSamples}
           />
         </section>
       </main>

@@ -117,6 +117,21 @@ body {
 }
 .logout-btn:hover { border-color: #f87171; color: #f87171; }
 
+/* ── Time-range selector ──────────────────────────────────────────────────── */
+.time-range-selector { display: flex; gap: 4px; }
+
+.range-btn {
+  padding: 4px 10px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.range-btn.active { background: #0f172a; border-color: #38bdf8; color: #38bdf8; }
+.range-btn:hover:not(.active) { border-color: #64748b; color: #e2e8f0; }
+
 /* ── Utility ──────────────────────────────────────────────────────────────── */
 .muted         { color: #64748b; font-size: 0.8rem; }
 .last-updated  { font-size: 0.75rem; }
