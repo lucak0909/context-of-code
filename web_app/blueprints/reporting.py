@@ -141,7 +141,7 @@ def latest():
 
     result = {}
     try:
-        for sample_type in ("desktop_network", "cloud_latency"):
+        for sample_type in ("desktop_network", "cloud_latency", "mobile_wifi"):
             sample = _get_db().get_latest_sample(device_id, sample_type)
             if sample:
                 result[sample_type] = _sample_to_dict(sample)

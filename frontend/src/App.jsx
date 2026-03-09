@@ -39,10 +39,12 @@ export default function App() {
 
   const [devices, setDevices] = useState([])
   const [selectedDevice, setSelectedDevice] = useState(null)
+  const [mobileDeviceId, setMobileDeviceId] = useState(null)
   const [networkSamples, setNetworkSamples] = useState([])
   const [cloudSamples, setCloudSamples] = useState([])
   const [mobileSamples, setMobileSamples] = useState([])
   const [latest, setLatest] = useState({})
+  const [mobileLatest, setMobileLatest] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -61,6 +63,8 @@ export default function App() {
     setCloudSamples([])
     setMobileSamples([])
     setLatest({})
+    setMobileLatest({})
+    setMobileDeviceId(null)
   }
 
   // Load device list when user changes
@@ -69,7 +73,10 @@ export default function App() {
     getDevices(user.user_id)
       .then((data) => {
         setDevices(data)
-        if (data.length > 0) setSelectedDevice(data[0].id)
+        const pcDevice = data.find(d => d.device_type !== 'mobile')
+        const mobileDevice = data.find(d => d.device_type === 'mobile')
+        if (pcDevice) setSelectedDevice(pcDevice.id)
+        if (mobileDevice) setMobileDeviceId(mobileDevice.id)
       })
       .catch(() => setError('Could not load devices. Is the API reachable?'))
   }, [user])
@@ -80,20 +87,22 @@ export default function App() {
     Promise.all([
       getSamples(selectedDevice, 'desktop_network', hours),
       getSamples(selectedDevice, 'cloud_latency', hours),
-      getSamples(selectedDevice, 'mobile_wifi', hours),
+      mobileDeviceId ? getSamples(mobileDeviceId, 'mobile_wifi', hours) : Promise.resolve([]),
       getLatest(selectedDevice),
+      mobileDeviceId ? getLatest(mobileDeviceId) : Promise.resolve({}),
     ])
-      .then(([net, cloud, mobile, lat]) => {
+      .then(([net, cloud, mobile, lat, mobileLat]) => {
         setNetworkSamples(net)
         setCloudSamples(cloud)
         setMobileSamples(mobile)
         setLatest(lat)
+        setMobileLatest(mobileLat)
         setLastUpdated(new Date())
         setError(null)
       })
       .catch(() => setError('Failed to fetch metrics.'))
       .finally(() => setLoading(false))
-  }, [selectedDevice, hours])
+  }, [selectedDevice, mobileDeviceId, hours])
 
   useEffect(() => {
     refresh()
@@ -107,9 +116,11 @@ export default function App() {
 
   const net = latest.desktop_network ?? {}
   const cloud = latest.cloud_latency ?? {}
+  const mobile = mobileLatest.mobile_wifi ?? {}
 
   const netStale = isStale(net.ts)
   const cloudStale = isStale(cloud.ts)
+  const mobileStale = isStale(mobile.ts)
   const activeRange = TIME_RANGES.find(r => r.hours === hours)?.label ?? '1h'
 
   return (
@@ -122,7 +133,7 @@ export default function App() {
         </div>
         <div className="header-right">
           <DeviceSelector
-            devices={devices}
+            devices={devices.filter(d => d.device_type !== 'mobile')}
             selected={selectedDevice}
             onChange={setSelectedDevice}
           />
@@ -233,6 +244,13 @@ export default function App() {
         {/* ── Mobile WiFi Section ── */}
         <section>
           <h2 className="section-title">Mobile WiFi (last {activeRange})</h2>
+
+          <div className="metric-row">
+            <MetricCard label="WiFi RSSI"  value={mobileStale ? null : mobile.wifi_rssi_dbm}                        unit="dBm" />
+            <MetricCard label="Link Speed" value={mobileStale ? null : mobile.link_speed_mbps}                      unit="Mbps" />
+            <MetricCard label="Connected"  value={mobileStale ? null : (mobile.is_connected ? 'Yes' : 'No')}        unit="" />
+          </div>
+
           <MobileChart
             title="WiFi RSSI & Link Speed"
             data={mobileSamples}
