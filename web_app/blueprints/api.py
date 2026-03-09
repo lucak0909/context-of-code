@@ -136,6 +136,15 @@ def ingest():
                 ts=ts,
             )
 
+        elif sample_type == "mobile_wifi":
+            db.insert_mobile_wifi_sample(
+                device_id=device_id,
+                wifi_rssi_dbm=_parse_optional_float(payload.get("wifi_rssi_dbm")),
+                link_speed_mbps=_parse_optional_float(payload.get("link_speed_mbps")),
+                is_connected=bool(payload.get("is_connected", False)),
+                ts=ts,
+            )
+
         else:
             logger.warning("Ingest request rejected: unsupported sample_type '%s'.", sample_type)
             return jsonify({"error": f"Unsupported sample_type: {sample_type}"}), 400

@@ -117,6 +117,28 @@ class Database:
             session.add(sample)
             session.commit()
 
+    def insert_mobile_wifi_sample(
+        self,
+        device_id: UUID,
+        *,
+        wifi_rssi_dbm: Optional[float],
+        link_speed_mbps: Optional[float],
+        is_connected: bool,
+        ts: Optional[datetime] = None,
+    ) -> None:
+        timestamp = ts or datetime.now(timezone.utc)
+        with Session(self.engine) as session:
+            sample = Sample(
+                device_id=str(device_id),
+                sample_type='mobile_wifi',
+                ts=timestamp,
+                wifi_rssi_dbm=wifi_rssi_dbm,
+                link_speed_mbps=link_speed_mbps,
+                is_connected=is_connected,
+            )
+            session.add(sample)
+            session.commit()
+
     def insert_cloud_latency_sample(
         self,
         device_id: UUID,

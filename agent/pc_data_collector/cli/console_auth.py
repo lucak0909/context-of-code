@@ -34,7 +34,8 @@ def _prompt_password(confirm: bool = False) -> Optional[str]:
     return password
 
 
-def register_flow(db: Database) -> Optional[UUID]:
+def register_flow(db: Database) -> Optional[tuple]:
+    """Returns (user_id, email, password) on success, else None."""
     email = _prompt_email()
     if not email:
         return None
@@ -51,10 +52,11 @@ def register_flow(db: Database) -> Optional[UUID]:
     user_id = db.create_user(email)
     db.set_password(user_id, password_hash)
     print(f"Registered. Your user ID is: {user_id}")
-    return user_id
+    return user_id, email, password
 
 
-def login_flow(db: Database) -> Optional[UUID]:
+def login_flow(db: Database) -> Optional[tuple]:
+    """Returns (user_id, email, password) on success, else None."""
     email = _prompt_email()
     if not email:
         return None
@@ -70,7 +72,7 @@ def login_flow(db: Database) -> Optional[UUID]:
 
     if db.verify_user_password(user.id, password):
         print(f"Login successful. Your user ID is: {user.id}")
-        return user.id
+        return user.id, email, password
 
     print("Invalid credentials.")
     return None
@@ -78,7 +80,7 @@ def login_flow(db: Database) -> Optional[UUID]:
 
 def main() -> None:
     db = Database()
-    user_id: Optional[UUID] = None
+    result: Optional[tuple] = None
     try:
         while True:
             print("\nChoose an option:")
@@ -88,16 +90,16 @@ def main() -> None:
             choice = input("Enter choice: ").strip()
 
             if choice == "1":
-                user_id = login_flow(db)
+                result = login_flow(db)
             elif choice == "2":
-                user_id = register_flow(db)
+                result = register_flow(db)
             elif choice == "3":
                 print("Goodbye.")
                 return
             else:
                 print("Invalid choice.")
 
-            if user_id:
+            if result:
                 break
     except KeyboardInterrupt:
         print("\nGoodbye.")
@@ -107,8 +109,9 @@ def main() -> None:
     finally:
         db.close()
 
-    if user_id:
-        run_with_user(user_id)
+    if result:
+        user_id, email, password = result
+        run_with_user(user_id, email=email, password=password)
 
 
 if __name__ == "__main__":

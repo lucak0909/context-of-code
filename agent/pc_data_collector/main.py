@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from agent.pc_data_collector.collector import DataCollector, MonitorReport
 from agent.cloud_latency_collector import run_cloud_latency_loop
+from agent.mobile_data_connector import run_mobile_connector_loop
 from agent.uploader_queue import UploadQueue
 
 from common.utils.logging_setup import setup_logger
@@ -78,13 +79,20 @@ def _default_device_name() -> str:
     return name or "unknown-device"
 
 #Production Function
-def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> None:
+def run_with_user(
+    user_id: UUID,
+    *,
+    email: str = "",
+    password: str = "",
+    interval_seconds: int = INTERVAL_SECONDS,
+) -> None:
     collector = DataCollector()
 
     queue = UploadQueue()
     device_id: Optional[UUID] = None
     stop_event = threading.Event()
     cloud_thread: Optional[threading.Thread] = None
+    mobile_thread: Optional[threading.Thread] = None
     try:
         from common.database.db_operations import Database
         db = Database()
@@ -93,6 +101,11 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
                 user_id=user_id,
                 name=_default_device_name(),
                 device_type="pc",
+            )
+            mobile_device = db.get_or_create_device(
+                user_id=user_id,
+                name=f"{email} (mobile)" if email else "mobile",
+                device_type="mobile",
             )
         finally:
             db.close()
@@ -112,8 +125,24 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
                 "stop_event": stop_event,
             },
             daemon=True,
+            name="cloud-latency",
         )
         cloud_thread.start()
+
+        if email and password:
+            mobile_thread = threading.Thread(
+                target=run_mobile_connector_loop,
+                kwargs={
+                    "email": email,
+                    "password": password,
+                    "device_id": mobile_device.id,
+                    "queue": queue,
+                    "stop_event": stop_event,
+                },
+                daemon=True,
+                name="mobile-connector",
+            )
+            mobile_thread.start()
 
         while True:
             start = time.monotonic()
@@ -150,6 +179,8 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
         stop_event.set()
         if cloud_thread:
             cloud_thread.join(timeout=5)
+        if mobile_thread:
+            mobile_thread.join(timeout=5)
 
 
 if __name__ == "__main__":
