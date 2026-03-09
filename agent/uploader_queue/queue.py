@@ -12,8 +12,6 @@ from common.utils.logging_setup import setup_logger
 
 logger = setup_logger("uploader_queue")
 
-# ── Default Aggregator API URL (configurable via env var) ────────────────────
-DEFAULT_API_URL = "http://127.0.0.1:5000/api/ingest"
 REQUEST_TIMEOUT = int(os.getenv("AGGREGATOR_TIMEOUT_SECONDS", "10"))
 
 
