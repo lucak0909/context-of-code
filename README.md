@@ -6,15 +6,18 @@ A distributed network telemetry system. Agents running on team members' machines
 
 ```
 [Agent on your laptop]
-  └── pc_data_collector   (local network metrics)
+  └── pc_data_collector        (local network metrics)
   └── cloud_latency_collector  (Globalping latency)
-  └── uploader_queue      (buffers + retries HTTP POST)
+  └── mobile_data_connector    (polls mobile app Supabase DB)
+  └── uploader_queue           (buffers + retries HTTP POST)
          │
          ▼  POST /api/ingest
 [VM — Flask + Gunicorn]   http://200.69.13.70:5017
          │
          ▼
 [Supabase PostgreSQL]     samples table
+
+[Mobile app Supabase DB]  ──▶  mobile_data_connector (polled every 30s)
 ```
 
 ## Recent Changes (March 2026)
@@ -48,18 +51,56 @@ A distributed network telemetry system. Agents running on team members' machines
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file in the project root with:
-   ```
-   user=postgres.vkfyssomfhjlddwdaruz
-   password=[ASK LUCA FOR PASSWORD]
-   host=aws-1-eu-north-1.pooler.supabase.com
-   port=5432
-   dbname=postgres
+4. Create a `.env` file in the project root. All available variables are listed below.
 
-   AGGREGATOR_API_URL=http://200.69.13.70:5017/api/ingest
-   ```
+### Root `.env` variables
 
-   > **Important:** The `AGGREGATOR_API_URL` line is new. Without it the agent will try to POST to localhost and fail.
+| Variable | Required | Description |
+|---|---|---|
+| `user` | Yes | Main Supabase DB user (e.g. `postgres.<project-ref>`) |
+| `password` | Yes | Main Supabase DB password |
+| `host` | Yes | Main Supabase session pooler host |
+| `port` | Yes | Main Supabase pooler port (typically `5432`) |
+| `dbname` | Yes | Main Supabase database name (typically `postgres`) |
+| `AGGREGATOR_API_URL` | Yes | Full ingest URL (e.g. `http://<vm-ip>:5017/api/ingest`) — without this the agent POSTs to localhost and fails |
+| `GLOBALPING_API_TOKEN` | No | Globalping API bearer token — increases rate limits for cloud latency measurements |
+| `GLOBALPING_DEBUG` | No | Set to `1` to log raw Globalping API responses |
+| `GLOBALPING_INTERVAL_SECONDS` | No | Cloud latency poll interval (default `300`) |
+| `GLOBALPING_TARGET` | No | Ping target hostname (default `globalping.io`) |
+| `GLOBALPING_LOC_EU` | No | Override EU probe location |
+| `GLOBALPING_LOC_US` | No | Override US probe location |
+| `GLOBALPING_LOC_ASIA` | No | Override Asia probe location |
+| `MOBILE_DB_USER` | No* | Mobile app Supabase DB user (e.g. `postgres.<project-ref>`) |
+| `MOBILE_DB_PASSWORD` | No* | Mobile app Supabase DB password |
+| `MOBILE_DB_HOST` | No* | Mobile app Supabase pooler host |
+| `MOBILE_DB_PORT` | No* | Mobile app Supabase pooler port (`6543` for transaction pooler) |
+| `MOBILE_DB_NAME` | No* | Mobile app Supabase database name (typically `postgres`) |
+| `LOG_LEVEL` | No | Logging level (e.g. `INFO`, `DEBUG`, `ERROR`) |
+| `LOG_FORMAT` | No | Override log format string |
+| `LOG_DATE_FORMAT` | No | Override log date format |
+| `LOGS_DIR` | No | Directory for log files (default `logs/`) |
+
+\* If any `MOBILE_DB_*` variable is missing the mobile connector thread is skipped gracefully — the rest of the agent continues normally.
+
+### `frontend/.env` variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_URL` | No | Base URL of the aggregator API (e.g. `http://<vm-ip>:5017`). Leave empty to proxy through Vite to `localhost:5000` during local development. |
+
+---
+
+## Mobile Data — Important Credential Requirement
+
+> **The mobile data connector authenticates against the mobile app's Supabase database using the same email and password you log in with on the dashboard.**
+>
+> Both accounts must use **identical credentials**. If they differ, the mobile connector will fail to authenticate and no mobile WiFi data will be collected or displayed.
+
+To get mobile data working:
+1. Set all `MOBILE_DB_*` vars in your root `.env`
+2. Register or log in to the **mobile app** with the **exact same email and password** as your dashboard account
+3. Run `python -m agent` — look for `Mobile connector started` in the logs
+4. Mobile WiFi metrics appear in the **Mobile WiFi** section of the dashboard
 
 ## Running
 

@@ -43,6 +43,20 @@ ENV_LOGS_DIR = "LOGS_DIR"
 ENV_LOG_FORMAT = "LOG_FORMAT"
 ENV_LOG_DATE_FORMAT = "LOG_DATE_FORMAT"
 
+MOBILE_DB_ENV_USER = "MOBILE_DB_USER"
+MOBILE_DB_ENV_PASSWORD = "MOBILE_DB_PASSWORD"
+MOBILE_DB_ENV_HOST = "MOBILE_DB_HOST"
+MOBILE_DB_ENV_PORT = "MOBILE_DB_PORT"
+MOBILE_DB_ENV_NAME = "MOBILE_DB_NAME"
+
+MOBILE_DB_REQUIRED_ENV_VARS = (
+    MOBILE_DB_ENV_USER,
+    MOBILE_DB_ENV_PASSWORD,
+    MOBILE_DB_ENV_HOST,
+    MOBILE_DB_ENV_PORT,
+    MOBILE_DB_ENV_NAME,
+)
+
 
 def _require_env(name: str) -> str:
     value = os.getenv(name)
@@ -74,6 +88,15 @@ class LogSettings:
 
 
 @dataclass(frozen=True)
+class MobileDbSettings:
+    mobile_db_user: str
+    mobile_db_password: str
+    mobile_db_host: str
+    mobile_db_port: int
+    mobile_db_name: str
+
+
+@dataclass(frozen=True)
 class Settings:
     db_user: str
     db_password: str
@@ -101,6 +124,26 @@ def get_settings() -> Settings:
         db_port=int(_require_env(DB_ENV_PORT)),
         db_name=_require_env(DB_ENV_NAME),
         aggregator_api_url=os.getenv(ENV_AGGREGATOR_API_URL, DEFAULT_API_URL),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_mobile_db_settings() -> MobileDbSettings:
+    load_dotenv()
+
+    missing = [name for name in MOBILE_DB_REQUIRED_ENV_VARS if not os.getenv(name)]
+    if missing:
+        raise ValueError(
+            "Missing required env vars for mobile DB connection: "
+            + ", ".join(missing)
+        )
+
+    return MobileDbSettings(
+        mobile_db_user=_require_env(MOBILE_DB_ENV_USER),
+        mobile_db_password=_require_env(MOBILE_DB_ENV_PASSWORD),
+        mobile_db_host=_require_env(MOBILE_DB_ENV_HOST),
+        mobile_db_port=int(_require_env(MOBILE_DB_ENV_PORT)),
+        mobile_db_name=_require_env(MOBILE_DB_ENV_NAME),
     )
 
 
