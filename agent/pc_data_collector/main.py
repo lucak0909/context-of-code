@@ -5,7 +5,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from agent.pc_data_collector.collector import DataCollector, MonitorReport
 from agent.cloud_latency_collector import run_cloud_latency_loop
@@ -18,11 +18,6 @@ logger = setup_logger("agent")
 
 INTERVAL_SECONDS = 30
 
-
-def collect_once(collector: DataCollector) -> None:
-    metrics = collector.get_network_metrics(use_cache=False)
-    report = MonitorReport(network_metrics=metrics)
-    logger.info(report.to_json())
 
 #test function
 def run(interval_seconds: int = INTERVAL_SECONDS) -> None:
