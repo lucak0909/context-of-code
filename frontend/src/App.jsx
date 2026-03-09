@@ -6,6 +6,8 @@ import DeviceSelector from './components/DeviceSelector'
 import MetricCard from './components/MetricCard'
 import NetworkChart from './components/NetworkChart'
 import MobileChart from './components/MobileChart'
+import BytesChart from './components/BytesChart'
+import TcpConnectionsChart from './components/TcpConnectionsChart'
 
 const POLL_INTERVAL_MS = 60_000 // refresh data every 60 seconds
 const STALE_THRESHOLD_MS = 15.1 * 60 * 1000 // 15.1 minutes in ms
@@ -191,6 +193,17 @@ export default function App() {
               data={networkSamples}
               lines={[{ key: 'up_mbps', color: '#fb923c', name: 'Upload' }]}
               unit=" Mbps"
+            />
+          </div>
+
+          <div className="chart-grid" style={{ marginTop: '16px' }}>
+            <BytesChart
+              title="Network Bytes (Cumulative)"
+              data={networkSamples}
+            />
+            <TcpConnectionsChart
+              title="TCP Connections (Established)"
+              data={networkSamples}
             />
           </div>
         </section>

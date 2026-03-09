@@ -30,6 +30,9 @@ class NetworkMetrics:
     upload_speed_mbps: float  # Megabits per second
     ip_address: str  # Local IP
     test_method: str  # Method used for speed test
+    tcp_connections: Optional[int]   # Count of ESTABLISHED TCP connections (IPv4+IPv6)
+    bytes_sent: Optional[int]        # Cumulative bytes sent since boot (raw OS counter)
+    bytes_recv: Optional[int]        # Cumulative bytes received since boot (raw OS counter)
 
 
 class DataCollector:
@@ -77,6 +80,8 @@ class DataCollector:
                 local_ip,
             ) = self._collect_network_metrics_parallel()
 
+        tcp_connections, bytes_sent, bytes_recv = self._collect_tcp_and_bytes()
+
         new_metrics = NetworkMetrics(
             download_speed_mbps=download_speed,
             upload_speed_mbps=upload_speed,
@@ -84,6 +89,9 @@ class DataCollector:
             ping=ping_ms,
             ip_address=local_ip,
             test_method=method,
+            tcp_connections=tcp_connections,
+            bytes_sent=bytes_sent,
+            bytes_recv=bytes_recv,
         )
 
         # Update cache
@@ -93,6 +101,32 @@ class DataCollector:
         return new_metrics
 
     # --- HELPER METHODS ---
+
+    def _collect_tcp_and_bytes(self) -> tuple:
+        """
+        Collect TCP connection count and cumulative network byte counters.
+        Returns (tcp_connections, bytes_sent, bytes_recv) — any field is None on failure.
+        """
+        import psutil
+
+        tcp_connections = None
+        bytes_sent = None
+        bytes_recv = None
+
+        try:
+            conns = psutil.net_connections(kind='tcp')
+            tcp_connections = sum(1 for c in conns if c.status == 'ESTABLISHED')
+        except Exception as exc:
+            logger.warning("Failed to collect TCP connections: %s", exc)
+
+        try:
+            io = psutil.net_io_counters()
+            bytes_sent = io.bytes_sent
+            bytes_recv = io.bytes_recv
+        except Exception as exc:
+            logger.warning("Failed to collect net IO counters: %s", exc)
+
+        return tcp_connections, bytes_sent, bytes_recv
 
     def _collect_network_metrics_parallel(
         self,

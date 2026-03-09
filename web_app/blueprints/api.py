@@ -44,6 +44,18 @@ def _parse_optional_float(
         return default
 
 
+def _parse_optional_int(
+    value: Optional[object], default: Optional[int] = None
+) -> Optional[int]:
+    """Safely cast a JSON value to int, returning *default* on failure."""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _parse_timestamp(value: Optional[str]) -> datetime:
     """Parse an ISO-8601 string into a timezone-aware datetime."""
     if not value:
@@ -109,6 +121,9 @@ def ingest():
                 up_mbps=_parse_optional_float(payload.get("up_mbps"), default=0.0),
                 test_method=payload.get("test_method"),
                 ip=payload.get("ip"),
+                tcp_connections=_parse_optional_int(payload.get("tcp_connections")),
+                bytes_sent=_parse_optional_int(payload.get("bytes_sent")),
+                bytes_recv=_parse_optional_int(payload.get("bytes_recv")),
                 ts=ts,
             )
 

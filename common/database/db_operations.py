@@ -93,6 +93,9 @@ class Database:
         up_mbps: float,
         test_method: Optional[str] = None,
         ip: Optional[str] = None,
+        tcp_connections: Optional[int] = None,
+        bytes_sent: Optional[int] = None,
+        bytes_recv: Optional[int] = None,
         ts: Optional[datetime] = None,
     ) -> None:
         timestamp = ts or datetime.now(timezone.utc)
@@ -106,7 +109,10 @@ class Database:
                 down_mbps=down_mbps,
                 up_mbps=up_mbps,
                 test_method=test_method,
-                ip=ip
+                ip=ip,
+                tcp_connections=tcp_connections,
+                bytes_sent=bytes_sent,
+                bytes_recv=bytes_recv,
             )
             session.add(sample)
             session.commit()

@@ -57,6 +57,9 @@ def _sample_to_dict(sample) -> dict:
         "up_mbps": sample.up_mbps,
         "test_method": sample.test_method,
         "ip": sample.ip,
+        "tcp_connections": sample.tcp_connections,
+        "bytes_sent": sample.bytes_sent,
+        "bytes_recv": sample.bytes_recv,
         # cloud_latency fields
         "latency_eu_ms": sample.latency_eu_ms,
         "latency_us_ms": sample.latency_us_ms,

@@ -46,10 +46,13 @@ def run(interval_seconds: int = INTERVAL_SECONDS) -> None:
                     "up_mbps": metrics.upload_speed_mbps,
                     "test_method": metrics.test_method,
                     "ip": metrics.ip_address,
+                    "tcp_connections": metrics.tcp_connections,
+                    "bytes_sent": metrics.bytes_sent,
+                    "bytes_recv": metrics.bytes_recv,
                 }
                 queue.enqueue(payload)
                 sent = queue.flush()
-                
+
                 if sent:
                     logger.info("Uploaded %s queued sample(s).", sent)
                 else:
@@ -126,6 +129,9 @@ def run_with_user(user_id: UUID, interval_seconds: int = INTERVAL_SECONDS) -> No
                     "up_mbps": metrics.upload_speed_mbps,
                     "test_method": metrics.test_method,
                     "ip": metrics.ip_address,
+                    "tcp_connections": metrics.tcp_connections,
+                    "bytes_sent": metrics.bytes_sent,
+                    "bytes_recv": metrics.bytes_recv,
                 }
                 queue.enqueue(payload)
                 sent = queue.flush()
