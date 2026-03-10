@@ -257,17 +257,17 @@ class DataCollector:
             for test_url in test_urls:
                 try:
                     start_time = time.time()
-                    response = urllib.request.urlopen(test_url, timeout=self.timeout)
-                    total_bytes = 0
-                    max_bytes = 10_000_000  # Cap at 10MB test
-                    while total_bytes < max_bytes:
-                        chunk = response.read(min(64 * 1024, max_bytes - total_bytes))
-                        if not chunk:
-                            break
-                        total_bytes += len(chunk)
-                    elapsed = time.time() - start_time
-                    if elapsed > 0:
-                        return (total_bytes * 8) / elapsed / 1_000_000
+                    with urllib.request.urlopen(test_url, timeout=self.timeout) as response:
+                        total_bytes = 0
+                        max_bytes = 10_000_000  # Cap at 10MB test
+                        while total_bytes < max_bytes:
+                            chunk = response.read(min(64 * 1024, max_bytes - total_bytes))
+                            if not chunk:
+                                break
+                            total_bytes += len(chunk)
+                        elapsed = time.time() - start_time
+                        if elapsed > 0:
+                            return (total_bytes * 8) / elapsed / 1_000_000
                 except Exception:
                     continue
             return 0.0
@@ -286,7 +286,8 @@ class DataCollector:
                     start_time = time.time()
                     req = urllib.request.Request(test_url, data=payload, method="POST")
                     req.add_header("Content-Type", "application/octet-stream")
-                    urllib.request.urlopen(req, timeout=self.timeout).read()
+                    with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                        response.read()
                     elapsed = time.time() - start_time
                     if elapsed > 0:
                         return (len(payload) * 8) / elapsed / 1_000_000

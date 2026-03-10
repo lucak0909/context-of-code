@@ -16,7 +16,7 @@ logger = setup_logger("console_auth")
 def _prompt_email() -> Optional[str]:
     email = input("Email: ").strip().lower()
     if not email:
-        print("Email is required.")
+        logger.warning("Email is required")
         return None
     return email
 
@@ -24,12 +24,12 @@ def _prompt_email() -> Optional[str]:
 def _prompt_password(confirm: bool = False) -> Optional[str]:
     password = getpass.getpass("Password: ").strip()
     if not password:
-        print("Password is required.")
+        logger.warning("Password is required")
         return None
     if confirm:
         confirm_password = getpass.getpass("Confirm password: ").strip()
         if password != confirm_password:
-            print("Passwords do not match.")
+            logger.warning("Passwords do not match")
             return None
     return password
 
@@ -41,7 +41,7 @@ def register_flow(db: Database) -> Optional[tuple]:
         return None
 
     if db.get_user_by_email(email):
-        print("Account already exists. Please login.")
+        logger.warning("Account already exists for %s", email)
         return None
 
     password = _prompt_password(confirm=True)
@@ -51,7 +51,7 @@ def register_flow(db: Database) -> Optional[tuple]:
     password_hash = hash_password(password)
     user_id = db.create_user(email)
     db.set_password(user_id, password_hash)
-    print(f"Registered. Your user ID is: {user_id}")
+    logger.info("Registered user %s", user_id)
     return user_id, email, password
 
 
@@ -63,7 +63,7 @@ def login_flow(db: Database) -> Optional[tuple]:
 
     user = db.get_user_by_email(email)
     if not user:
-        print("No account found. Please register first.")
+        logger.warning("No account found for %s", email)
         return None
 
     password = _prompt_password(confirm=False)
@@ -71,10 +71,10 @@ def login_flow(db: Database) -> Optional[tuple]:
         return None
 
     if db.verify_user_password(user.id, password):
-        print(f"Login successful. Your user ID is: {user.id}")
+        logger.info("Login successful for user %s", user.id)
         return user.id, email, password
 
-    print("Invalid credentials.")
+    logger.warning("Invalid credentials for %s", email)
     return None
 
 
@@ -94,15 +94,15 @@ def main() -> None:
             elif choice == "2":
                 result = register_flow(db)
             elif choice == "3":
-                print("Goodbye.")
+                logger.info("Exiting")
                 return
             else:
-                print("Invalid choice.")
+                logger.warning("Invalid menu choice: %s", choice)
 
             if result:
                 break
     except KeyboardInterrupt:
-        print("\nGoodbye.")
+        logger.info("Exiting")
     except Exception:
         logger.exception("Console auth failed")
         sys.exit(1)

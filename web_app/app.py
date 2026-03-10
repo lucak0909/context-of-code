@@ -4,8 +4,12 @@ from datetime import datetime, timezone
 from web_app.blueprints.api import api_bp
 from web_app.blueprints.reporting import reporting_bp
 from web_app.blueprints.auth import auth_bp
+from common.utils.logging_setup import setup_logger
+
+logger = setup_logger(__name__)
 
 app = Flask(__name__)
+logger.info("Flask app initialising")
 CORS(app)
 
 # Register Blueprints
