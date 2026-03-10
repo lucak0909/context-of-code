@@ -1,5 +1,9 @@
 import time
-import logging 
+from common.utils.logging_setup import setup_logger
+
+logger = setup_logger(__name__)
+
+
 class BlockTimer:
     def __enter__(self):
         self.start_time = time.perf_counter()
@@ -8,7 +12,7 @@ class BlockTimer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end_time = time.perf_counter()
         self.total_time = self.end_time - self.start_time
-        logging.info(f"Block Timer: {self.total_time:.4f} seconds")
+        logger.info("Block Timer: %.4f seconds", self.total_time)
         #self note: return None NOT self because self = truthy
         #truth being returned for __exit__ = "Oh, the programmer handled the error. I'll hide it and keep going."
         return None 
