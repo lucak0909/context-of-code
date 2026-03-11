@@ -19,7 +19,7 @@ logger = setup_logger("cloud_latency")
 
 GLOBALPING_BASE_URL = "https://api.globalping.io/v1/measurements"
 DEFAULT_TARGET = os.getenv("GLOBALPING_TARGET", "globalping.io")
-DEFAULT_INTERVAL_SECONDS = int(os.getenv("GLOBALPING_INTERVAL_SECONDS", "300"))
+DEFAULT_INTERVAL_SECONDS = int(os.getenv("GLOBALPING_INTERVAL_SECONDS", "30"))
 DEFAULT_PACKETS = int(os.getenv("GLOBALPING_PACKETS", "3"))
 REQUEST_TIMEOUT = int(os.getenv("GLOBALPING_TIMEOUT_SECONDS", "10"))
 MAX_POLL_SECONDS = int(os.getenv("GLOBALPING_MAX_POLL_SECONDS", "15"))

@@ -9,9 +9,8 @@ import {
   Legend,
 } from 'recharts'
 
-// BytesChart: displays cumulative bytes sent and received (converted from bytes to MB).
-// Raw values from the agent are bytes since boot. Old rows with null values are skipped
-// via connectNulls — the chart starts from the first row that has real data.
+// BytesChart: displays MB transferred per 30s interval (delta of cumulative OS counters).
+// Negative deltas caused by reboots or interface resets are shown as gaps rather than dips.
 export default function BytesChart({ title, data }) {
   function formatTime(ts) {
     if (!ts) return ''
@@ -19,13 +18,25 @@ export default function BytesChart({ title, data }) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  // Convert raw bytes to MB for each data point. Null values remain null (connectNulls handles them).
+  // Compute per-interval delta from cumulative OS counters.
+  // Negative deltas (reboot/interface reset) are clamped to null so the chart gaps instead of dipping.
   const chartData = data
-    ? data.map((row) => ({
-        ...row,
-        bytes_sent_mb: row.bytes_sent != null ? row.bytes_sent / 1_000_000 : null,
-        bytes_recv_mb: row.bytes_recv != null ? row.bytes_recv / 1_000_000 : null,
-      }))
+    ? data.map((row, i) => {
+        const prev = i > 0 ? data[i - 1] : null
+        const sentDelta =
+          prev && row.bytes_sent != null && prev.bytes_sent != null
+            ? row.bytes_sent - prev.bytes_sent
+            : null
+        const recvDelta =
+          prev && row.bytes_recv != null && prev.bytes_recv != null
+            ? row.bytes_recv - prev.bytes_recv
+            : null
+        return {
+          ...row,
+          bytes_sent_mb: sentDelta != null && sentDelta >= 0 ? sentDelta / 1_000_000 : null,
+          bytes_recv_mb: recvDelta != null && recvDelta >= 0 ? recvDelta / 1_000_000 : null,
+        }
+      })
     : []
 
   if (!chartData || chartData.length === 0 || chartData.every(r => r.bytes_sent_mb == null && r.bytes_recv_mb == null)) {
@@ -51,7 +62,7 @@ export default function BytesChart({ title, data }) {
           />
           <YAxis
             tick={{ fill: '#94a3b8', fontSize: 11 }}
-            unit=" MB"
+            unit=" MB/interval"
             width={70}
           />
           <Tooltip

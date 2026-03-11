@@ -209,7 +209,7 @@ export default function App() {
 
           <div className="chart-grid" style={{ marginTop: '16px' }}>
             <BytesChart
-              title="Network Bytes (Cumulative)"
+              title="Network Bytes (per 30s interval)"
               data={networkSamples}
             />
             <TcpConnectionsChart
