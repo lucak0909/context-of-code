@@ -1,0 +1,185 @@
+@startuml
+!theme plain
+skinparam defaultTextAlignment center
+skinparam activityFontSize 11
+skinparam swimlaneWidth 260
+skinparam ArrowColor #555555
+skinparam ActivityBorderColor #555555
+
+title python -m agent — Full Execution Flow
+
+|Main|
+
+start
+
+:__main__.py
+imports and calls console_auth.main();
+
+:console_auth.main()
+Database() — open SQLAlchemy engine;
+
+if (menu choice?) then ([1] Login)
+  :login_flow(db);
+  :_prompt_email()
+  input().strip().lower();
+  :db.get_user_by_email()
+  SELECT FROM users WHERE email=?;
+  :_prompt_password()
+  getpass.getpass() — hidden input;
+  :db.verify_user_password()
+  SELECT password_enc FROM passwords
+  bcrypt.checkpw(plain, hash);
+else ([2] Register)
+  :register_flow(db);
+  :_prompt_email()
+  input().strip().lower();
+  :db.get_user_by_email()
+  check no duplicate exists;
+  :_prompt_password(confirm=True)
+  getpass twice — must match;
+  :hash_password()
+  bcrypt.hashpw(password, salt);
+  :db.create_user()
+  INSERT INTO users;
+  :db.set_password()
+  INSERT INTO passwords;
+endif
+
+:db.close()
+RAII — always runs in finally
+returns (user_id, email, password);
+
+:run_with_user(user_id, email, password)
+DataCollector()
+UploadQueue()
+threading.Event() — stop_event;
+
+:Database()
+db.get_or_create_device(name, "pc")
+db.get_or_create_device(email + " (mobile)", "mobile")
+db.close() — RAII finally;
+
+fork
+  |cloud-latency|
+  :run_cloud_latency_loop()
+  GlobalpingLatencyCollector()
+  _build_headers() — User-Agent + Bearer token
+  _build_locations() — DE / US+Virginia / CN;
+  repeat
+    :collector.measure();
+    :_create_measurement()
+    _request_json POST → api.globalping.io
+    returns measurement_id;
+    :_wait_for_results(measurement_id)
+    _request_json GET — poll until done
+    exponential backoff 0.5s→2s, max 15s;
+    :_extract_latencies(data)
+    per probe: _resolve_region()
+    country code → eu / us / asia
+    _extract_avg_ms()
+    tries stats → timings → rawOutput regex;
+    :queue.enqueue(payload)
+    Lock → JSON serialize
+    append line to agent_queue.jsonl;
+    :queue.flush()
+    _send_payload() POST /api/ingest
+    _rewrite_queue() atomic .tmp replace;
+    :stop_event.wait(300s);
+  repeat while (stop_event set?) is (no)
+  ->yes;
+
+fork again
+  |mobile-connector|
+  :run_mobile_connector_loop()
+  get_mobile_db_settings()
+  quote_plus(user / password)
+  build postgresql+psycopg2 DSN;
+  :MobileDataConnector(dsn)
+  create_engine(poolclass=NullPool);
+  :connector.authenticate(email, password)
+  SELECT id FROM users WHERE email=?
+  SELECT password_enc FROM passwords
+  verify_password() — bcrypt.checkpw();
+  :last_seen = datetime.now(UTC);
+  repeat
+    :connector.get_new_samples(since=last_seen)
+    SELECT wifi_rssi_dbm, link_speed_mbps
+    is_connected, ts, created_at
+    FROM wifi_samples
+    WHERE created_at > last_seen
+    ORDER BY created_at ASC;
+    :for each sample:
+    queue.enqueue(mobile_wifi payload)
+    update last_seen = samples[-1].created_at;
+    :queue.flush()
+    _send_payload() POST /api/ingest
+    _rewrite_queue() atomic .tmp replace;
+    :stop_event.wait(30s);
+  repeat while (stop_event set?) is (no)
+  ->yes;
+  :connector.close()
+  engine.dispose();
+
+fork again
+  |Main|
+  repeat
+    :collector.get_network_metrics(use_cache=False);
+    fork
+      :download_task()
+      _get_speedtest_client("download")
+      speedtest.Speedtest().get_best_server()
+      _measure_download_speed()
+      primary: speedtest.download() / 1M
+      fallback: _simple_download_test()
+      urlopen → read 10MB → calc Mbps;
+    fork again
+      :upload_task()
+      _get_speedtest_client("upload")
+      _measure_upload_speed()
+      primary: speedtest.upload() / 1M
+      fallback: _simple_upload_test()
+      POST 2MB random data → calc Mbps;
+    fork again
+      :_measure_packet_loss()
+      for each host [1.1.1.1, 8.8.8.8]:
+      _measure_packet_loss_host()
+      primary: ping3.ping()
+      fallback: _subprocess_ping()
+      ping -n (Win) / -c (Unix)
+      regex parse loss% + avg time;
+    fork again
+      :_get_local_ip()
+      socket(SOCK_DGRAM)
+      connect(8.8.8.8:80)
+      getsockname()[0];
+    end fork
+    :_collect_tcp_and_bytes()
+    psutil.net_connections(kind="tcp")
+    count status == ESTABLISHED
+    psutil.net_io_counters()
+    → bytes_sent, bytes_recv;
+    :→ NetworkMetrics dataclass;
+    :queue.enqueue(desktop_network payload)
+    Lock → append to agent_queue.jsonl;
+    :queue.flush()
+    for each JSONL line:
+    _send_payload() POST /api/ingest
+    HTTP 200 → sent, else keep for retry
+    _rewrite_queue() atomic .tmp→.jsonl;
+    :stop_event.wait(30s)
+    wakes instantly on Ctrl+C;
+  repeat while (stop_event set?) is (no)
+  ->KeyboardInterrupt;
+
+end fork
+
+|Main|
+:finally block
+stop_event.set()
+cloud_thread.join(timeout=5s)
+mobile_thread.join(timeout=5s)
+"Agent stopped.";
+
+stop
+
+@enduml

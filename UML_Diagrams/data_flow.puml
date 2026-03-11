@@ -1,0 +1,234 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 250
+skinparam NoteBackgroundColor #FFFDE7
+skinparam NoteBorderColor #F9A825
+
+title Agent → Supabase: Data Flow & Transformations
+
+participant "OS APIs\n(psutil, ping3\nspeedtest, socket)" as OS
+participant "DataCollector\ncollector.py" as DC
+participant "run_with_user()\nmain.py" as Main
+participant "UploadQueue\nqueue.py" as Q
+participant "Flask /api/ingest\napi.py" as API
+participant "Database ORM\ndb_operations.py" as DB
+participant "Supabase\nPostgreSQL" as PG
+
+== Desktop Network (Main Thread, every 30s) ==
+
+OS -> DC : raw OS values
+note over OS
+  psutil.net_connections() → list of sconn objects
+  psutil.net_io_counters() → snetio named tuple
+  ping3.ping("1.1.1.1") → float (seconds) or None
+  speedtest.download() → int (bits/sec)
+  socket.getsockname() → ("192.168.x.x", port)
+end note
+
+DC -> Main : NetworkMetrics dataclass
+note over DC
+  @dataclass NetworkMetrics:
+    ping: float              # ms
+    packet_loss_percent: float
+    download_speed_mbps: float
+    upload_speed_mbps: float
+    ip_address: str
+    test_method: str
+    tcp_connections: Optional[int]
+    bytes_sent: Optional[int]
+    bytes_recv: Optional[int]
+end note
+
+Main -> Q : enqueue(payload)
+note over Main
+  Plain Python dict (fields selected from NetworkMetrics):
+  {
+    "sample_type":    "desktop_network",
+    "device_id":      "647f...",         ← str(UUID)
+    "ts":             "2026-03-11T10:00:00+00:00",
+    "latency_ms":     12.4,
+    "packet_loss_pct": 0.0,
+    "down_mbps":      94.2,
+    "up_mbps":        22.1,
+    "test_method":    "Official Speedtest CLI",
+    "ip":             "192.168.1.5",
+    "tcp_connections": 42,
+    "bytes_sent":     1024000,
+    "bytes_recv":     4096000
+  }
+end note
+
+== UploadQueue: dict → file → HTTP ==
+
+Q -> Q : json.dumps(payload, separators=(",",":"))
+note over Q
+  Compact JSON string — no spaces:
+  {"sample_type":"desktop_network","device_id":"647f...","ts":"2026-03-11T10:00:00+00:00","latency_ms":12.4,...}
+
+  Written as one line to agent_queue.jsonl:
+  line1\n   ← desktop_network payload
+  line2\n   ← cloud_latency payload  (if queued)
+  line3\n   ← mobile_wifi payload    (if queued)
+end note
+
+Q -> API : HTTP POST /api/ingest
+note over Q
+  urllib.request — UTF-8 encoded bytes:
+  POST http://200.69.13.70:5017/api/ingest
+  Content-Type: application/json
+
+  body: b'{"sample_type":"desktop_network",...}'
+end note
+
+== Flask: bytes → DB insert ==
+
+API -> API : request.get_json()
+note over API
+  Flask deserializes body back to Python dict.
+  Routes on sample_type:
+
+  "desktop_network" → db.insert_desktop_network_sample()
+  "cloud_latency"   → db.insert_cloud_latency_sample()
+  "mobile_wifi"     → db.insert_mobile_wifi_sample()
+end note
+
+API -> DB : insert_desktop_network_sample(device_id, data)
+note over API
+  Dict fields are unpacked as kwargs:
+  db.insert_desktop_network_sample(
+    device_id = UUID("647f..."),
+    ts        = datetime.fromisoformat("2026-03-11T10:00:00+00:00"),
+    latency_ms = 12.4,
+    down_mbps  = 94.2,
+    ...
+  )
+end note
+
+DB -> DB : Sample(ORM object)
+note over DB
+  SQLAlchemy ORM model instantiated:
+  Sample(
+    device_id    = UUID object,
+    sample_type  = "desktop_network",
+    ts           = datetime object,
+    latency_ms   = 12.4,
+    down_mbps    = 94.2,
+    up_mbps      = 22.1,
+    tcp_connections = 42,
+    bytes_sent   = 1024000,
+    bytes_recv   = 4096000,
+    latency_eu_ms = None,    ← NULL for non-cloud rows
+    wifi_rssi_dbm = None     ← NULL for non-mobile rows
+  )
+  session.add(sample)
+  session.commit()
+end note
+
+DB -> PG : INSERT INTO samples (...)
+note over PG
+  PostgreSQL row:
+  ┌────┬───────────┬─────────────────┬────────────┬───────────┬──────────┬──────┐
+  │ id │ device_id │ sample_type     │ latency_ms │ down_mbps │ eu_ms    │ rssi │
+  ├────┼───────────┼─────────────────┼────────────┼───────────┼──────────┼──────┤
+  │ 42 │ 647f...   │ desktop_network │ 12.4       │ 94.2      │ NULL     │ NULL │
+  └────┴───────────┴─────────────────┴────────────┴───────────┴──────────┴──────┘
+end note
+
+== Cloud Latency (cloud-latency thread, every 300s) ==
+
+OS -> DC : Globalping API JSON response
+note over OS
+  HTTP GET https://api.globalping.io/v1/measurements/{id}
+  {
+    "status": "finished",
+    "results": [
+      { "probe": { "country": "DE" },
+        "result": { "stats": { "avg": 14.2 } } },
+      { "probe": { "country": "US" },
+        "result": { "stats": { "avg": 89.1 } } },
+      { "probe": { "country": "CN" },
+        "result": { "stats": { "avg": 201.4 } } }
+    ]
+  }
+end note
+
+DC -> Main : CloudLatencyResult dataclass
+note over DC
+  @dataclass CloudLatencyResult:
+    latency_eu_ms:   14.2
+    latency_us_ms:   89.1
+    latency_asia_ms: 201.4
+end note
+
+Main -> Q : enqueue(payload)
+note over Main
+  {
+    "sample_type":      "cloud_latency",
+    "device_id":        "647f...",
+    "ts":               "2026-03-11T10:05:00+00:00",
+    "latency_eu_ms":    14.2,
+    "latency_us_ms":    89.1,
+    "latency_asia_ms":  201.4
+  }
+end note
+
+DB -> PG : INSERT INTO samples (...)
+note over PG
+  ┌────┬───────────┬───────────────┬────────────┬──────────┬──────────┬──────────┐
+  │ id │ device_id │ sample_type   │ latency_ms │ eu_ms    │ us_ms    │ asia_ms  │
+  ├────┼───────────┼───────────────┼────────────┼──────────┼──────────┼──────────┤
+  │ 43 │ 647f...   │ cloud_latency │ NULL       │ 14.2     │ 89.1     │ 201.4    │
+  └────┴───────────┴───────────────┴────────────┴──────────┴──────────┴──────────┘
+end note
+
+== Mobile WiFi (mobile-connector thread, every 30s) ==
+
+OS -> DC : Raw SQL rows from mobile Supabase DB
+note over OS
+  SELECT wifi_rssi_dbm, link_speed_mbps,
+         is_connected, ts, created_at
+  FROM wifi_samples
+  WHERE user_id = ? AND created_at > ?
+
+  Returns: list of SQLAlchemy Row tuples
+  e.g. (-67.0, 144.0, True, datetime(...), datetime(...))
+end note
+
+DC -> Main : list[dict]
+note over DC
+  get_new_samples() converts each Row to dict:
+  [
+    {
+      "wifi_rssi_dbm":   -67.0,
+      "link_speed_mbps": 144.0,
+      "is_connected":    True,
+      "ts":              datetime(2026, 3, 11, 9, 58, 0),
+      "created_at":      datetime(2026, 3, 11, 9, 58, 1)
+    },
+    ...
+  ]
+end note
+
+Main -> Q : enqueue(payload) per sample
+note over Main
+  {
+    "sample_type":     "mobile_wifi",
+    "device_id":       "uuid-of-mobile-device",
+    "ts":              "2026-03-11T09:58:00",  ← ts.isoformat()
+    "wifi_rssi_dbm":   -67.0,
+    "link_speed_mbps": 144.0,
+    "is_connected":    true
+  }
+end note
+
+DB -> PG : INSERT INTO samples (...)
+note over PG
+  ┌────┬───────────┬─────────────┬────────────┬──────────┬──────────────┬──────────────┐
+  │ id │ device_id │ sample_type │ latency_ms │ eu_ms    │ wifi_rssi    │ link_speed   │
+  ├────┼───────────┼─────────────┼────────────┼──────────┼──────────────┼──────────────┤
+  │ 44 │ mobile... │ mobile_wifi │ NULL       │ NULL     │ -67.0        │ 144.0        │
+  └────┴───────────┴─────────────┴────────────┴──────────┴──────────────┴──────────────┘
+end note
+
+@enduml
